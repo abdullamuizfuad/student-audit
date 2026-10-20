@@ -14,7 +14,9 @@
  * 5. Send that URL to Claude (it is not a secret) and it goes into the tool. Or put it in ui.js where it says COPY_URL.
  *
  * Class list (Roster tab):
- * - The "Roster" tab holds the student IDs allowed into the tool: IDs in column A (for example S083354), names in column B (optional).
+ * - Any tab with "Roster" in its name holds the student IDs allowed in (for example "Class Roster 2025 T2"):
+ *   IDs in column A (for example S083354), names in column B (optional). A header row is fine but not needed.
+ * - To close access for an old cohort, rename its tab so it no longer says Roster (for example "Archive 2025 T2"), or delete it.
  * - When a student presses Verify on the landing page, the page asks this script whether the ID is on the list. The list itself never leaves your sheet.
  * - New semester: delete the old rows and paste the new cohort. No website change is needed.
  * - While the Roster tab is empty, every correctly formatted ID is let in.
@@ -49,7 +51,8 @@ function doGet(e) {
 }
 
 function lookup_(sid) {
-  const rows = roster_().getDataRange().getValues().slice(1).filter(r => String(r[0] || "").trim());
+  let rows = [];
+  rosters_().forEach(sh => { rows = rows.concat(sh.getDataRange().getValues().filter(r => /^S0\d{5}$/i.test(String(r[0] || "").trim()))); });
   if (!rows.length) return { empty: true };
   for (const r of rows) {
     if (String(r[0]).trim().toUpperCase() === sid) return { found: true, name: String(r[1] || "").trim() };
@@ -57,9 +60,13 @@ function lookup_(sid) {
   return { found: false };
 }
 
+function rosters_() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => /roster/i.test(s.getName()));
+}
+
 function roster_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName(ROSTER_NAME);
+  let sh = rosters_()[0];
   if (!sh) {
     sh = ss.insertSheet(ROSTER_NAME);
     sh.appendRow(["student id", "name (optional)"]);
