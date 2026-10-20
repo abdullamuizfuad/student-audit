@@ -10,7 +10,9 @@ function blank() {
   return { step: 0, biz: { name: "", student: "", sid: "", type: "", onLocation: "", checked: SA.ymd(d), start: m.getFullYear() + "-" + ("0" + (m.getMonth() + 1)).slice(-2), cap: "" },
     social: {}, gbp: { status: "", checks: {} }, site: { has: "", checks: {}, subs: {} }, rep: {}, plan: null, objs: null };
 }
-var S = blank(), IMG = {}; // IMG holds screenshots in memory only
+var ME = (function () { try { return JSON.parse(localStorage.getItem("ia-student") || sessionStorage.getItem("ia-student") || "null") || {}; } catch (e) { return {}; } })();
+function stamp(st) { st.biz.student = ME.name || st.biz.student || ""; st.biz.sid = ME.sid || st.biz.sid || ""; st.biz.email = ME.email || ""; return st; }
+var S = stamp(blank()), IMG = {}; // IMG holds screenshots in memory only
 
 function save() { try { var c = JSON.parse(JSON.stringify(S)); localStorage.setItem(DRAFT, JSON.stringify(c)); } catch (e) {} }
 function load() { try { var r = localStorage.getItem(DRAFT); if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; return true; } } } catch (e) {} return false; }
@@ -49,7 +51,7 @@ function viewBiz() {
   return '<h1 class="sa-h">Audit a business\'s digital presence</h1>' +
     '<p class="sa-lede">You will check the business\'s social media, Google profile, website and reviews, using only what anyone can see in public. The tool scores each part by fixed rules. Then you build your own 12-month plan: target market, objectives, strategies and evaluation. The tool structures and costs it, and gives you one PDF as evidence.</p>' +
     '<div class="sa-note">Look at the real accounts while you answer, on a phone if you can. Pick "the business does not have it" when something is missing. That counts as a zero and shows up as a gap. Do not guess: choose "Can\'t tell" and the question is left out of the score.</div>' +
-    '<div class="sa-card"><h3>You</h3><div class="sa-grid">' + txt("biz.student", "Your name") + txt("biz.sid", "Student ID") + "</div></div>" +
+    '<div class="sa-who"><span>Signed in as <b>' + esc(S.biz.student) + "</b></span><span>" + esc(S.biz.sid) + "</span><span>" + esc(S.biz.email) + '</span><a href="index.html">Not you?</a></div>' +
     '<div class="sa-card"><h3>The business</h3><div class="sa-grid">' + txt("biz.name", "Business name", { wide: true }) + "</div>" +
     chips("biz.group", "What kind of business is it?", G, { re: true }) +
     (grp === "travel" ? chips("biz.type", "Which kind of tourism business?", T, { re: true, tip: "Hotels are judged on the big booking sites. Dive centres are judged on review pages. Tour operators are not scored on reviews." }) : "") +
@@ -421,7 +423,7 @@ function stratCard(s, si) {
   }
   return h + "</div></details>";
 }
-var GC = { web: "#245582", seo: "#2B83BA", content: "#3a9f78", smads: "#7B5BD6", banner: "#C98A1B", email: "#1FA0BF", infl: "#D6457F", viral: "#E0603F", affil: "#2E9E6A" };
+var GC = { web: "#245582", seo: "#2a82bb", content: "#2fa9a9", smads: "#3f9e74", banner: "#1C3F63", email: "#5FA8D3", infl: "#1F7F7F", viral: "#7cc9a6", affil: "#7A93A8" };
 function ganttHtml() {
   var lab = SA.monthLabels(S.biz.start), T = SA.TBY[S.biz.type] || SA.TBY.service, h = '<div class="sa-mon"><table class="sa-tbl sa-gt"><tr><th>Activity</th>' + lab.map(function (m) { return "<th>" + m.short + "</th>"; }).join("") + "</tr>", any = false;
   S.plan.strats.forEach(function (s) {
@@ -555,7 +557,7 @@ document.addEventListener("click", function (ev) {
   if (t.id === "saAddObj") { S.objs.push({ id: uid("o"), text: "", kpi: "", unit: "%", base: "", target: "", deadline: 12, tool: "", freq: "Monthly", q: ["", "", ""], trig: 10, act: "" }); render(true); return; }
   if (t.dataset.rm !== undefined) { if (S.objs.length <= 3 && !confirm("The assignment needs at least 3 objectives. Remove this one anyway?")) return; S.objs.splice(+t.dataset.rm, 1); render(true); return; }
   if (t.id === "saPdf") { makeIt(); return; }
-  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = blank(); IMG = {}; try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
+  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = stamp(blank()); IMG = {}; try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
 });
 function onChange(ev) {
   var t = ev.target;
@@ -615,7 +617,7 @@ function sendCopy(res, code, A) {
   if (!COPY_URL) return Promise.resolve("not-set");
   var M = modelStuff(), uri = res.doc.output("datauristring"), b64 = uri.slice(uri.indexOf("base64,") + 7);
   var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + "]: " + g.who; }).join("\n");
-  var body = { student: S.biz.student, sid: S.biz.sid, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
+  var body = { student: S.biz.student, sid: S.biz.sid, email: S.biz.email, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
     studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: S.tm.pos, answers: JSON.stringify(S), pdf: b64 };
   return fetch(COPY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function () { return "sent"; }, function () { return "failed"; });
 }
@@ -642,6 +644,6 @@ $("saTheme").addEventListener("click", function () {
 $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
 window.SA_SET = function (st, img) { S = st; IMG = img || {}; render(); };
-if (load()) { if (S.step > 5) S.step = 5; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
+if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); if (S.step > 5) S.step = 5; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
 render();
 })();

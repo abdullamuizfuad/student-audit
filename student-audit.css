@@ -155,3 +155,78 @@ body{background:var(--bg)}
 .sa-st-b textarea{width:100%;font:inherit;padding:.6em .8em;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);resize:vertical}
 [data-theme=dark] .sa-sm.ok{color:var(--ink)}
 @media(max-width:640px){.sa-grid{grid-template-columns:1fr}.sa-sliders{grid-template-columns:1fr}}
+
+/* ---------- Islandeative colours: navy, blue, teal, green ---------- */
+:root{
+  --navy:#245582; --blue:#2a82bb; --teal:#3ac0c0; --green:#56c095;
+  --accent:#245582; --accent-hover:#1C4569; --on-accent:#FCFEFF; --link:#1F6FA3;
+  --sun:#3ac0c0; --sun-soft:#E5F6F5;
+  --brand-grad:linear-gradient(90deg,#2a82bb 0%,#3ac0c0 55%,#56c095 100%);
+  --bg:#F7FBFC; --raised:#FFFFFF; --surface:#EEF6F8; --surface-2:#E1EEF2; --line:#D3E2EA;
+}
+:root[data-theme="dark"]{
+  --accent:#3ac0c0; --accent-hover:#5fd0cf; --on-accent:#06202F; --link:#7fd6d5;
+  --sun:#3ac0c0; --sun-soft:#0D3340;
+  --bg:#081A2A; --raised:#0F2A40; --surface:#0E2537; --surface-2:#153149; --line:#21435F;
+}
+.sa-prog span{background:var(--brand-grad)}
+.sa-top{border-bottom:0}
+.sa-top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--brand-grad)}
+.sa-logo{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.sa-logo img{width:34px;height:auto}
+.sa-who{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:14px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--line);margin:0 0 18px;font-size:.93rem}
+.sa-who b{font-weight:700}
+.sa-who a{margin-inline-start:auto;font-weight:700}
+.sa-card h3,.sa-h2{color:var(--ink)}
+.sa-h{background:linear-gradient(90deg,var(--navy),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-theme="dark"] .sa-h{background:linear-gradient(90deg,#9fd8f0,#7fd6d5,#8fdcb9);-webkit-background-clip:text;background-clip:text}
+.sa-chip[aria-pressed=true]{box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 28%,transparent)}
+.sa-rg input[type=range]{accent-color:var(--teal)}
+.sa-ck input,.sa-agree input{accent-color:var(--teal)}
+
+/* ---------- landing page (gate) ---------- */
+.sa-gate-body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow-x:hidden;position:relative}
+.sa-gate-theme{position:fixed;top:16px;right:16px;z-index:5}
+.sa-gate-sea{position:fixed;inset:auto 0 0 0;height:42vh;pointer-events:none;z-index:0;overflow:hidden}
+.sa-gate-sea span{position:absolute;left:-10%;right:-10%;bottom:0;height:100%;border-radius:50% 50% 0 0/22% 22% 0 0;opacity:.13}
+.sa-gate-sea .b1{background:var(--blue);bottom:-16%}
+.sa-gate-sea .b2{background:var(--teal);bottom:-26%;left:-20%}
+.sa-gate-sea .b3{background:var(--green);bottom:-36%;right:-25%}
+[data-theme="dark"] .sa-gate-sea span{opacity:.18}
+@media (prefers-reduced-motion:no-preference){
+  .sa-gate-sea .b1{animation:sa-swell 9s ease-in-out infinite alternate}
+  .sa-gate-sea .b2{animation:sa-swell 7s ease-in-out -2s infinite alternate}
+  .sa-gate-sea .b3{animation:sa-swell 8s ease-in-out -4s infinite alternate}
+}
+@keyframes sa-swell{from{transform:translate3d(-2%,0,0)}to{transform:translate3d(2%,-4%,0)}}
+.sa-gate{position:relative;z-index:1;flex:1;width:100%;max-width:480px;margin:0 auto;padding:40px 16px 24px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.sa-gate .il-logo{width:min(250px,64vw);margin:0 auto 14px}
+[data-theme="dark"] .sa-gate .il-logo{--il-word:#E6EFF5;--il-pill:#3ac0c0;--il-pill-ink:#06202F}
+.sa-gate-kicker{margin:0 0 6px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sa-gate-h{font-size:clamp(1.9rem,7vw,2.6rem);margin:0 0 8px;background:var(--brand-grad);background:linear-gradient(90deg,var(--navy),var(--blue) 45%,var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-theme="dark"] .sa-gate-h{background:linear-gradient(90deg,#9fd8f0,#7fd6d5,#8fdcb9);-webkit-background-clip:text;background-clip:text}
+.sa-gate-sub{color:var(--muted);margin:0 0 22px;max-width:40ch}
+.sa-gate-card{width:100%;text-align:start;background:var(--raised);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 24px 60px rgba(15,43,69,.10);position:relative;overflow:hidden}
+.sa-gate-card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--brand-grad)}
+.sa-gate-card .f{margin-bottom:14px}
+.sa-gate-card label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}
+.sa-gate-card input{width:100%;font:inherit;font-size:1.05rem;padding:.7em .9em;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.sa-gate-card input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px color-mix(in srgb,var(--teal) 22%,transparent)}
+.sa-id{display:flex;align-items:stretch;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+.sa-id:focus-within{border-color:var(--teal);box-shadow:0 0 0 4px color-mix(in srgb,var(--teal) 22%,transparent)}
+.sa-id-s{display:grid;place-items:center;padding:0 14px;background:var(--navy);color:#fff;font:800 1.15rem var(--display);font-style:italic}
+[data-theme="dark"] .sa-id-s{background:var(--teal);color:#06202F}
+.sa-id input{border:0;border-radius:0;letter-spacing:.32em;font-weight:700;background:transparent}
+.sa-id input:focus{box-shadow:none}
+.sa-mail{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--surface);border:1.5px dashed var(--line);margin:4px 0 6px;transition:background .3s,border-color .3s}
+.sa-mail .ico{width:22px;height:22px;color:var(--muted);flex:none}
+.sa-mail small{display:block;font-size:.74rem;color:var(--muted);font-weight:600}
+.sa-mail b{display:block;font-weight:700;word-break:break-all;font-size:.98rem}
+.sa-mail b i{font-style:normal;color:var(--muted);opacity:.55}
+.sa-mail.ok{background:color-mix(in srgb,var(--green) 14%,var(--raised));border-style:solid;border-color:color-mix(in srgb,var(--green) 55%,transparent)}
+.sa-mail.ok .ico{color:var(--green)}
+.sa-gate-err{min-height:1.3em;margin:4px 0 8px;color:var(--err);font-size:.88rem;font-weight:600}
+.sa-gate-btn{width:100%;justify-content:center;font-size:1.05rem;padding:.85em 1em}
+.sa-gate-btn:disabled{opacity:.45;cursor:not-allowed}
+.sa-gate-note{margin:16px 0 0;font-size:.85rem;color:var(--muted);max-width:40ch}
+.sa-gate-foot{position:relative;z-index:1;text-align:center;padding:12px 16px 20px}

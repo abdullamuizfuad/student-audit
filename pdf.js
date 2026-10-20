@@ -45,7 +45,7 @@ function build(S, IMG, fonts, logo, dims) {
   function tint(c, t) { return [Math.round(c[0] + (255 - c[0]) * t), Math.round(c[1] + (255 - c[1]) * t), Math.round(c[2] + (255 - c[2]) * t)]; }
   var ACC = [36, 85, 130], INK = [29, 43, 52], MUT = [99, 113, 124], WHITE = [255, 255, 255], LINE = [214, 222, 228];
   var COL = { good: [46, 139, 87], warn: [201, 138, 27], bad: [209, 80, 63] };
-  var SCOL = { web: [36, 85, 130], seo: [43, 131, 186], content: [86, 190, 147], smads: [123, 91, 214], banner: [217, 154, 43], email: [31, 160, 191], infl: [214, 69, 127], viral: [224, 96, 63], affil: [46, 158, 106] };
+  var SCOL = { web: [36, 85, 130], seo: [42, 130, 187], content: [47, 169, 169], smads: [63, 158, 116], banner: [28, 63, 99], email: [95, 168, 211], infl: [31, 127, 127], viral: [124, 201, 166], affil: [122, 147, 168] };
   var A = SA.audit(S), B = SA.budget(S.plan, S.biz), lab = B.labels, T = SA.TBY[S.biz.type] || SA.TBY.service;
   var f0 = function (n) { return Math.round(n).toLocaleString("en-US"); };
   var tx = function (s, x, yy, o) { doc.text(safe(s), x, yy, o); };
@@ -99,7 +99,7 @@ function build(S, IMG, fonts, logo, dims) {
   F("fb", 7.5, [200, 225, 240]); tx("STUDENT AUDIT  |  CHECKED " + S.biz.checked, M, 31);
   F("ax", 22, WHITE); var tl = split(S.biz.name, 120); tx(tl.slice(0, 2).join("\n"), M, 40);
   F("fr", 10, WHITE); tx("Digital presence audit and 12-month plan", M, tl.length > 1 ? 56 : 48);
-  F("fr", 9, [210, 230, 242]); tx("Prepared by " + (S.biz.student || "student") + (S.biz.sid ? "  |  ID " + S.biz.sid : ""), M, tl.length > 1 ? 62 : 55);
+  F("fr", 9, [210, 230, 242]); tx("Prepared by " + (S.biz.student || "student") + (S.biz.sid ? "  |  " + S.biz.sid : "") + (S.biz.email ? "  |  " + S.biz.email : ""), M, tl.length > 1 ? 62 : 55);
   fill(WHITE); doc.circle(W - M - 20, 45, 17, "F"); ring(W - M - 20, 45, 16, 12.5, A.overall, COL[tier], [232, 238, 242]);
   F("ax", 26, INK); tx(String(A.overall), W - M - 20, 48.5, { align: "center" }); F("fb", 6.5, MUT); tx("OUT OF 100", W - M - 20, 53.5, { align: "center" });
   y = 78;

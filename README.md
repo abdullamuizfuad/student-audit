@@ -8,7 +8,10 @@ Runs in the browser. Answers stay on the student device until they download the 
 Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root).
 
 ## Files
-- `index.html` the page
+- `index.html` the landing page (animated Islandeative logo, name and MNU student ID, email shown automatically)
+- `gate.js` landing page script
+- `tool.html` the audit tool (sends students back to the landing page if they have not entered their ID)
+- `assets/logo-loop.css`, `assets/logo-loop.js` the animated logo
 - `core.js` scoring rules and draft-plan rules (no AI)
 - `tools/student-audit-apps-script.gs` the Google Apps Script that receives each student copy (setup steps are inside the file)
 - `ui.js` screens, `pdf.js` PDF report, `student-audit.css` styles
