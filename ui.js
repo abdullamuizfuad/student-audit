@@ -79,9 +79,20 @@ function platCard(p) {
     h += chips(a + ".lastBand", "When was the last post?", SA.LAST_BANDS.map(function (x) { return [x[0], x[1]]; }), { re: true, sm: true, tip: "Read it the way the app shows it, for example 3w or 2 months ago." });
     if (lb && lb !== "never") {
       if (st === "active") h += chips(a + ".freqBand", "Look at the 3 newest posts. How far back does the third one go?", SA.FREQ_BANDS.map(function (x) { return [x[0], x[1]]; }), { sm: true });
-      h += '<fieldset class="sa-fs"><legend>Likes plus comments on each of the 5 newest posts</legend><p class="sa-tip">Type the number for each post. The tool works out the average. Leave a box empty if there are fewer than 5 posts.</p><div class="sa-eng">';
-      for (var i = 1; i <= 5; i++) h += '<input data-p="' + a + ".eng." + i + '" inputmode="numeric" aria-label="Post ' + i + ' likes plus comments" placeholder="Post ' + i + '" value="' + esc(getp(a + ".eng." + i)) + '">';
-      h += '</div><label class="sa-sw" style="margin-top:8px"><input type="checkbox" data-p="' + a + '.likesHidden" data-bool="1"' + (getp(a + ".likesHidden") ? " checked" : "") + "> <span>Likes are hidden on this account</span></label></fieldset>";
+      h += '<fieldset class="sa-fs"><legend>Rate the 3 newest posts</legend><p class="sa-tip">For each post, type the number of likes and pick how many comments it has.</p>';
+      for (var i = 1; i <= 3; i++) {
+        var cv = getp(a + ".eng." + i + ".c");
+        h += '<div class="sa-post"><b>Post ' + i + '</b><div class="f"><label for="l_' + a + i + '">Likes</label><input id="l_' + a + i + '" data-p="' + a + ".eng." + i + '.l" inputmode="numeric" value="' + esc(getp(a + ".eng." + i + ".l")) + '"></div><div class="sa-opts" role="group" aria-label="Comments on post ' + i + '">' +
+          SA.CBANDS.map(function (x) { return '<button type="button" class="sa-chip sm" data-p="' + a + ".eng." + i + '.c" data-v="' + x[0] + '" aria-pressed="' + (cv === x[0]) + '">' + x[1] + " comments</button>"; }).join("") + "</div></div>";
+      }
+      h += '<label class="sa-sw" style="margin-top:8px"><input type="checkbox" data-p="' + a + '.likesHidden" data-bool="1"' + (getp(a + ".likesHidden") ? " checked" : "") + "> <span>Likes are hidden on this account</span></label>" +
+        '<label class="sa-sw" style="margin-top:8px"><input type="checkbox" data-p="' + a + '.fewPosts" data-bool="1"' + (getp(a + ".fewPosts") ? " checked" : "") + "> <span>The account has fewer than 3 posts</span></label></fieldset>";
+    }
+    if (lb === "never" || lb === "m12" || lb === "y1") {
+      var wa = getp(a + ".wasActive"), yr = getp(a + ".lastYear") || "";
+      h += '<div class="sa-yn"><label class="sa-sw"><input type="checkbox" data-p="' + a + '.wasActive" data-bool="1" data-re="1"' + (wa ? " checked" : "") + "> <span>The business was active here before</span></label>" +
+        '<div class="f" style="max-width:280px;margin-top:8px"><label for="y_' + a + '">Last year it was active</label><select id="y_' + a + '" data-p="' + a + '.lastYear"' + (wa ? "" : " disabled") + '><option value="">Choose a year</option>' +
+        ["2025", "2024", "2023", "2022", "2021", "2020", "Older than 2020"].map(function (y) { return '<option' + (yr === y ? " selected" : "") + ">" + y + "</option>"; }).join("") + "</select></div></div>";
     }
     h += yn(a + ".bio", "The bio says what the business is, where it is and how to contact it.", "Read the profile top section.");
     h += yn(a + ".link", "There is a working link or contact button (website, booking page, WhatsApp).", "Tap it to test.");
@@ -99,10 +110,13 @@ function vSocial() {
     if (a.status === "none") return;
     if (SA.num(a.followers) == null) e.push(p.name + ": enter the number of followers.");
     if (!a.lastBand) { e.push(p.name + ": choose when the last post was."); }
-    else if (a.lastBand !== "never") {
-      if (a.status === "active" && !a.freqBand) e.push(p.name + ": choose how far back the third newest post goes.");
-      var n = [1, 2, 3, 4, 5].filter(function (i) { return SA.num((a.eng || {})[i]) != null; }).length;
-      if (!a.likesHidden && n < 3) e.push(p.name + ": enter likes plus comments for at least 3 posts, or tick that likes are hidden.");
+    else {
+      if (a.lastBand !== "never") {
+        if (a.status === "active" && !a.freqBand) e.push(p.name + ": choose how far back the third newest post goes.");
+        var n = SA.engCount(a);
+        if (!a.likesHidden && n < (a.fewPosts ? 1 : 2)) e.push(p.name + ": give the likes and the comments band for at least " + (a.fewPosts ? "1 post" : "2 of the 3 newest posts") + ", or tick that likes are hidden.");
+      }
+      if (a.wasActive && !a.lastYear) e.push(p.name + ": choose the last year the business was active, or untick that box.");
     }
     if (!a.bio) e.push(p.name + ": answer the bio question."); if (!a.link) e.push(p.name + ": answer the link question.");
   });
@@ -341,6 +355,7 @@ function onChange(ev) {
   if (t.dataset && t.dataset.shot) { shot(t); return; }
   if (!t.dataset || !t.dataset.p || t.tagName === "BUTTON") return;
   var v = t.dataset.bool ? t.checked : t.value;
+  if (t.dataset.re) { setp(t.dataset.p, v); render(true); save(); return; }
   if (t.dataset.num) v = +v;
   setp(t.dataset.p, v);
   if (t.dataset.p.indexOf("objs.") === 0) {

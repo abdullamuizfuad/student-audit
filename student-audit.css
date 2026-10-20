@@ -115,3 +115,10 @@ body{background:var(--bg)}
   .sa-brand{display:none}
 }
 @media (prefers-reduced-motion:reduce){.sa-prog span{transition:none}}
+
+.sa-post{padding:12px 0;border-top:1px solid var(--line);display:grid;gap:8px}
+.sa-post:first-of-type{border-top:0}
+.sa-post .f{margin:0;max-width:200px}
+.sa-post input{width:100%;font:inherit;padding:.6em .8em;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.sa-yn select{width:100%;font:inherit;padding:.6em .8em;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.sa-yn select:disabled{opacity:.5}

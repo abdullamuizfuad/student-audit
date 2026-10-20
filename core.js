@@ -46,10 +46,13 @@ function tally(items) {
 var LAST_BANDS = [["d1", "Today or yesterday", 1], ["w1", "This week", 5], ["w2", "1 to 2 weeks ago", 11], ["w4", "3 to 4 weeks ago", 25], ["m3", "1 to 3 months ago", 60], ["m12", "3 to 12 months ago", 200], ["y1", "More than a year ago", 500], ["never", "Never posted", null]];
 var FREQ_BANDS = [["w1", "Within a week", 16], ["w2", "Within 2 weeks", 8], ["m1", "Within a month", 4], ["m3", "Within 3 months", 1.5], ["old", "Older than 3 months, or fewer than 3 posts in 2026", 0.3]];
 function bandVal(list, id) { for (var i = 0; i < list.length; i++) if (list[i][0] === id) return list[i][2]; return undefined; }
+var CBANDS = [["c0", "Fewer than 5", 2], ["c1", "5 to 10", 7], ["c2", "11 to 20", 15], ["c3", "More than 20", 25]];
+function engCount(a) { var n = 0; [1, 2, 3].forEach(function (i) { var p = (a.eng || {})[i] || {}; if (num(p.l) != null && bandVal(CBANDS, p.c) !== undefined) n++; }); return n; }
 function engAvg(a) {
   if (a.likesHidden) return null;
-  var v = [1, 2, 3, 4, 5].map(function (i) { return num((a.eng || {})[i]); }).filter(function (x) { return x != null; });
-  return v.length >= 3 ? v.reduce(function (p, c) { return p + c; }, 0) / v.length : null;
+  var v = [];
+  [1, 2, 3].forEach(function (i) { var p = (a.eng || {})[i] || {}, l = num(p.l), cb = bandVal(CBANDS, p.c); if (l != null && cb !== undefined) v.push(l + cb); });
+  return v.length >= (a.fewPosts ? 1 : 2) ? v.reduce(function (x, y) { return x + y; }, 0) / v.length : null;
 }
 var YN = { y: 1, p: 0.5, n: 0, u: null };
 
@@ -532,6 +535,6 @@ function evalRows(objs) {
 }
 
 G.SA = { PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
-  repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
+  repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);

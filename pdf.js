@@ -285,9 +285,9 @@ function build(S, IMG, fonts, logo, dims) {
 
   head("Appendix B: social media inputs");
   var LB = {}; SA.LAST_BANDS.forEach(function (x) { LB[x[0]] = x[1]; }); var FB = {}; SA.FREQ_BANDS.forEach(function (x) { FB[x[0]] = x[1]; });
-  table([{ w: 24, h: "Platform" }, { w: 26, h: "Status" }, { w: 18, h: "Followers", al: "r" }, { w: 32, h: "Last post" }, { w: 36, h: "3rd newest post" }, { w: 22, h: "Avg likes+comm.", al: "r" }, { w: 16, h: "Bio/link" }],
-    SA.PLATS.map(function (p) { var a = (S.social || {})[p.id] || {}; var yl = { y: "Yes", p: "Partly", n: "No", u: "?" }, on = a.status && a.status !== "none", av = (function () { var v = [1, 2, 3, 4, 5].map(function (i) { return SA.num((a.eng || {})[i]); }).filter(function (x) { return x != null; }); return v.length ? Math.round(v.reduce(function (x, y) { return x + y; }, 0) / v.length) : null; })();
-      return [{ t: p.name, b: true }, a.status === "none" ? "Does not have" : a.status === "dormant" ? "Not used" : a.status === "active" ? "Active" : "-", on ? f0(SA.num(a.followers) || 0) : "-", on ? (LB[a.lastBand] || "-") : "-", on && a.status === "active" ? (FB[a.freqBand] || "-") : "-", on ? (a.likesHidden ? "hidden" : av == null ? "-" : String(av)) : "-", on ? (yl[a.bio] || "-") + "/" + (yl[a.link] || "-") : "-"]; }), { zebra: true, size: 7.8 });
+  table([{ w: 24, h: "Platform" }, { w: 26, h: "Status" }, { w: 18, h: "Followers", al: "r" }, { w: 32, h: "Last post" }, { w: 36, h: "3rd newest post" }, { w: 22, h: "Avg likes + comments", al: "r" }, { w: 16, h: "Bio/link" }],
+    SA.PLATS.map(function (p) { var a = (S.social || {})[p.id] || {}; var yl = { y: "Yes", p: "Partly", n: "No", u: "?" }, on = a.status && a.status !== "none", av = SA.engAvg(a); av = av == null ? null : Math.round(av);
+      return [{ t: p.name, b: true }, a.status === "none" ? "Does not have" : a.status === "dormant" ? "Not used" : a.status === "active" ? "Active" : "-", on ? f0(SA.num(a.followers) || 0) : "-", on ? (LB[a.lastBand] || "-") + (a.wasActive && a.lastYear ? " (active until " + a.lastYear + ")" : "") : "-", on && a.status === "active" ? (FB[a.freqBand] || "-") : "-", on ? (a.likesHidden ? "hidden" : av == null ? "-" : String(av)) : "-", on ? (yl[a.bio] || "-") + "/" + (yl[a.link] || "-") : "-"]; }), { zebra: true, size: 7.8 });
 
   head("Appendix C: how the scores are worked out");
   bullets([
