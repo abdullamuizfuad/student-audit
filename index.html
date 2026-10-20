@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-view="heyo">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Digital Presence Audit, Student Edition | Islandeative</title>
+<meta name="description" content="A free audit tool for e-marketing students. Check a business's social media, Google profile, website and reviews, then get a draft 12-month plan to edit.">
+<script>try{if(localStorage.getItem("ia-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,100..125,400..900;1,100..125,400..900&family=Figtree:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="student-audit.css?v=1">
+</head>
+<body>
+<header class="sa-top">
+  <div class="wrap sa-top-in">
+    <a class="sa-back" href="https://islandeative.com"><svg class="ico dir" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg><span>Islandeative</span></a>
+    <span class="sa-brand">Student audit</span>
+    <button class="sa-theme" id="saTheme" type="button" aria-label="Switch light or dark mode"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23Z"/></svg></button>
+  </div>
+</header>
+
+<main class="wrap sa-main" id="saMain">
+  <noscript><p>This tool needs JavaScript to run.</p></noscript>
+  <div class="sa-prog" aria-hidden="true"><span id="saBar"></span></div>
+  <p class="sa-stepno" id="saStepNo"></p>
+  <div id="saStep" tabindex="-1"></div>
+  <ul class="sa-err" id="saErr" role="alert"></ul>
+  <div class="sa-nav" id="saNav">
+    <button type="button" class="btn btn-ghost" id="saPrev">Back</button>
+    <button type="button" class="btn btn-primary" id="saNext">Next</button>
+  </div>
+</main>
+
+<footer class="sa-foot wrap"><p>© <span id="saYr"></span> Islandeative. The Student Audit tool, its scoring rules and benchmarks are owned by Islandeative. Nothing you type or upload leaves your device unless you choose to share the PDF yourself.</p></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="core.js?v=1" defer></script>
+<script src="pdf.js?v=1" defer></script>
+<script src="ui.js?v=1" defer></script>
+</body>
+</html>
