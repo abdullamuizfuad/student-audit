@@ -24,7 +24,7 @@
     go.disabled = true; go.textContent = "Checking the class list..."; err.textContent = "";
     var done = function (msg) { go.textContent = "Verify and start"; check(); err.textContent = msg; };
     var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
-    fetch(CHECK_URL + "?action=check&sid=" + encodeURIComponent(sid), ctl ? { signal: ctl.signal } : {})
+    fetch(CHECK_URL + "?action=check&sid=" + encodeURIComponent(sid), { credentials: "omit", redirect: "follow", cache: "no-store", signal: ctl ? ctl.signal : undefined })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         clearTimeout(tm);
@@ -35,7 +35,15 @@
         go.textContent = res.name ? "Welcome, " + res.name.split(" ")[0] + ". Opening the tool..." : "Verified. Opening the tool...";
         setTimeout(function () { location.href = "tool.html"; }, 500);
       })
-      .catch(function () { clearTimeout(tm); done("The class list could not be reached. Check your internet and try again."); });
+      .catch(function () {
+        /* The class list could not be reached (Google down or busy). Let the student in, marked unverified: the copy sent to the lecturer is checked against the class list again. */
+        clearTimeout(tm);
+        var rec = { name: n.value.trim().replace(/\s+/g, " "), sid: sid, email: sid.toLowerCase() + "@student.mnu.edu.mv", verified: false, at: new Date().toISOString() };
+        try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
+        try { sessionStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
+        go.textContent = "Opening the tool...";
+        setTimeout(function () { location.href = "tool.html"; }, 500);
+      });
   });
   check();
   $("saTheme").addEventListener("click", function () {
