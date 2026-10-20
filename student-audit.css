@@ -230,3 +230,10 @@ body{background:var(--bg)}
 .sa-gate-btn:disabled{opacity:.45;cursor:not-allowed}
 .sa-gate-note{margin:16px 0 0;font-size:.85rem;color:var(--muted);max-width:40ch}
 .sa-gate-foot{position:relative;z-index:1;text-align:center;padding:12px 16px 20px}
+.sa-pick{display:inline-block;margin-inline-start:6px;font-size:.72rem;font-weight:700;color:var(--muted);background:var(--surface-2);border-radius:99px;padding:.1em .6em;vertical-align:2px}
+.sa-base{margin:18px 0 2px;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+[data-theme="dark"] .sa-base{color:var(--teal)}
+.sa-built{margin:14px 0 12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--teal) 12%,var(--raised));border:1px solid color-mix(in srgb,var(--teal) 40%,transparent)}
+.sa-built small{display:block;font-size:.74rem;font-weight:700;color:var(--muted)}
+.sa-built p{margin:2px 0 0;font-weight:600}
+textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}

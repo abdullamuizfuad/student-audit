@@ -174,20 +174,20 @@ function build(S, IMG, fonts, logo, dims) {
   var TM = S.tm || { bases: {}, segs: [], pos: {} }, PO = TM.pos || {}, uk = function (o) { return Object.keys(o || {}).filter(function (k) { return o[k]; }); };
   doc.addPage(); y = TOP;
   fill(tint(ACC, 0.9)); doc.roundedRect(M, y - 5, CW, 11, 3, 3, "F"); F("fb", 8.5, ACC); tx("TARGET MARKET (written by the student, laid out by the tool)", M + 4, y + 1.5); y += 12;
-  head("1. Target market", "Bases of segmentation used: " + (uk(TM.bases).map(function (k) { return BL[k]; }).join(", ") || "none") + ". Scores are 1 to 5 for size, ease of reaching online (reach) and fit with the business.");
-  table([{ w: 34, h: "Segment" }, { w: 68, h: "Who they are" }, { w: 22, h: "Size/Reach/Fit" }, { w: 12, h: "Score", al: "r" }, { w: 38, h: "Decision" }],
-    TM.segs.map(function (g) { return [{ t: g.name, b: true }, g.who, (g.size || 3) + " / " + (g.reach || 3) + " / " + (g.fit || 3), { t: String((+g.size || 0) + (+g.reach || 0) + (+g.fit || 0)), b: true }, { t: g.target === "yes" ? "Target" : "Not a target", b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 8 });
-  TM.segs.forEach(function (g) { para((g.target === "yes" ? "Why " : "Why not ") + g.name + ": " + g.why, { size: 8.8, gap: 1.8 }); });
+  head("1. Target market", "Bases of segmentation used: " + (uk(TM.bases).map(function (k) { return BL[k]; }).join(", ") || "none") + ". Each segment is rated on size, reach online, fit with the business and competition (1 to 3 points each, 12 in total).");
+  table([{ w: 32, h: "Segment" }, { w: 66, h: "Profile (from the student's picks)" }, { w: 50, h: "Size, reach, fit, competition" }, { w: 26, h: "Score / decision" }],
+    TM.segs.map(function (g) { var at = g.att || {}; return [{ t: g.name, b: true }, SA.segText(g), SA.ATT.map(function (x) { return at[x.k] !== undefined && at[x.k] !== "" ? x.o[+at[x.k]] : "-"; }).join("; "), { t: SA.segScore(g) + "/12\n" + (g.target === "yes" ? "Target" : "Not a target"), b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 7.8 });
+  TM.segs.forEach(function (g) { para((g.target === "yes" ? "Why " : "Why not ") + g.name + ": " + String(g.why || "").trim().replace(/([^.!?])$/, "$1.") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
   y += 2;
   head("2. Positioning");
   var stmt = "For " + (PO["for"] || "...") + " who " + (PO.need || "...") + ", " + S.biz.name + " is the " + (PO.cat || "...") + " that " + (PO.benefit || "...") + ". Unlike " + (PO.comp || "...") + ", we " + (PO.diff || "...") + " because " + (PO.proof || "...") + ".";
-  fill([246, 249, 251]); var sl = split(stmt, CW - 10); room(sl.length * lh(10) + 10); doc.roundedRect(M, y - 4.5, CW, sl.length * lh(10) + 7, 3, 3, "F"); F("fb", 10, INK); tx(sl.join("\n"), M + 5, y + 0.5); y += sl.length * lh(10) + 9;
+  fill([246, 249, 251]); F("fb", 10, INK); var sl = split(stmt, CW - 10); room(sl.length * lh(10) + 10); doc.roundedRect(M, y - 4.5, CW, sl.length * lh(10) + 7, 3, 3, "F"); F("fb", 10, INK); tx(sl.join("\n"), M + 5, y + 0.5); y += sl.length * lh(10) + 9;
   var ax = AXL[PO.ax] || AXL.price, ay = AXL[PO.ay] || AXL.range, MS = 62; room(MS + 16);
   var mx = M + 16, my = y + 4;
   fill([246, 249, 251]); doc.rect(mx, my, MS, MS, "F"); stroke(LINE); doc.setLineWidth(0.2); doc.rect(mx, my, MS, MS); doc.line(mx + MS / 2, my, mx + MS / 2, my + MS); doc.line(mx, my + MS / 2, mx + MS, my + MS / 2);
-  F("fr", 7, MUT); tx(ax[1], mx, my + MS + 4); tx(ax[2], mx + MS, my + MS + 4, { align: "right" }); tx(ay[2], mx - 2, my + MS, { align: "right" }); tx(ay[1], mx - 2, my + 3, { align: "right" });
-  function dot(px, py, col, lbl) { var dx = mx + MS * (+px || 0) / 100, dy = my + MS - MS * (+py || 0) / 100; fill(col); doc.circle(dx, dy, 2, "F"); F("fb", 7.5, INK); tx(lbl, Math.min(dx + 3, mx + MS - 2), dy + 0.9, dx > mx + MS - 20 ? { align: "right" } : undefined); }
-  dot(PO.cx, PO.cy, COL.bad, PO.comp || "Competitor"); dot(PO.ux, PO.uy, ACC, S.biz.name);
+  F("fr", 7, MUT); tx(ax[1], mx, my + MS + 4); tx(ax[2], mx + MS, my + MS + 4, { align: "right" }); tx(ay[1], mx - 2, my + MS, { align: "right" }); tx(ay[2], mx - 2, my + 3, { align: "right" });
+  function dot(px, py, col, lbl, below) { var dx = mx + MS * (+px || 0) / 100, dy = my + MS - MS * (+py || 0) / 100; fill(col); doc.circle(dx, dy, 2, "F"); F("fb", 7.5, INK); var ly = below ? dy + 5.6 : dy - 3; tx(lbl, Math.max(mx + 1, Math.min(mx + MS - 1, dx)), ly, { align: dx < mx + 14 ? "left" : dx > mx + MS - 14 ? "right" : "center" }); }
+  dot(PO.cx, PO.cy, COL.bad, PO.comp || "Competitor", true); dot(PO.ux, PO.uy, ACC, S.biz.name);
   F("fr", 8.5, MUT); tx(split("Perceptual map. Horizontal: " + ax[0] + ". Vertical: " + ay[0] + ". Placed by the student, based on the evidence in the report.", CW - MS - 22).join("\n"), mx + MS + 8, my + 6);
   y = my + MS + 12;
   room(110);
@@ -198,9 +198,10 @@ function build(S, IMG, fonts, logo, dims) {
     fill(ACC); doc.circle(M + 7, y + 3, 6, "F"); F("ax", 13, WHITE); tx(String(p.name || "?").charAt(0).toUpperCase(), M + 7, y + 6.6, { align: "center" });
     F("ax", 13, INK); tx(p.name || "Persona", M + 17, y + 2.6); F("fr", 9, MUT); tx(split("Age " + (p.age || "?") + "  |  " + (p.loc || "") + "  |  " + (p.job || ""), CW - 18)[0], M + 17, y + 7.6); y += 15;
     F("fb", 8, ACC); tx("PERSONA FOR SEGMENT: " + safe(g.name).toUpperCase(), M + 2, y); y += 5.2;
-    [["Goals", p.goals], ["Frustrations and fears", p.pain], ["What makes them buy", p.trig]].forEach(function (r) { F("fb", 8.5, INK); tx(r[0], M + 2, y); y += 4.4; para(r[1] || "", { size: 9, ind: 2, gap: 2 }); });
+    para("Segment: " + SA.segText(g), { size: 8.5, col: MUT, ind: 2, gap: 2 });
+    [["Wants", SA.picks(p.goal, SA.PGOAL)], ["Frustrations and hesitations", SA.picks(p.pain, SA.PPAIN)], ["What makes them buy", SA.picks(p.trig, SA.PTRIG)]].forEach(function (r) { F("fb", 8.5, INK); tx(r[0], M + 2, y); y += 4.4; para(r[1].join(", ") || "-", { size: 9, ind: 2, gap: 2 }); });
     if (p.quote) { F("fr", 9.5, ACC); var ql = split('"' + p.quote + '"', CW - 8); room(ql.length * lh(9.5) + 3); F("fr", 9.5, ACC); tx(ql.join("\n"), M + 4, y); y += ql.length * lh(9.5) + 3; }
-    para("Online: " + (chs.join(", ") || "-") + ".  Source: " + (SRC[p.src] || "-") + ".", { size: 8.5, col: MUT, ind: 2, gap: 2 });
+    para("Online: " + (chs.join(", ") || "-") + ".  Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.5, col: MUT, ind: 2, gap: 2 });
     para("Student to write in the report: what this persona means for the content, channels, offer and website.", { size: 8, col: MUT, ind: 2, gap: 2 });
     fill(ACC); doc.roundedRect(M, top - 1, 1.2, Math.max(8, y - top), 0.6, 0.6, "F"); y += 5;
   });
@@ -301,7 +302,7 @@ function build(S, IMG, fonts, logo, dims) {
   head("8. Control and evaluation", "How results will be checked against each objective. Written by the student.");
   table([{ w: 8, h: "#" }, { w: 46, h: "KPI, baseline to target" }, { w: 40, h: "End of Q1 | Q2 | Q3 | Q4" }, { w: 34, h: "Numbers from" }, { w: 18, h: "How often" }, { w: 28, h: "Act if behind by" }],
     S.objs.map(function (o, i) { var un = o.unit || ""; return [String(i + 1), o.kpi + ": " + o.base + un + " to " + o.target + un, (o.q || []).map(function (v) { return v + un; }).concat([o.target + un]).join(" | "), o.tool, o.freq, (o.trig || 10) + "% below the milestone"]; }), { size: 7.8, zebra: true });
-  S.objs.forEach(function (o, i) { para("Objective " + (i + 1) + ", if behind: " + (o.act || "-"), { size: 8.8, gap: 1.8 }); });
+  S.objs.forEach(function (o, i) { para("Objective " + (i + 1) + ", if behind: " + (SA.picks(o.acts, SA.ACTS).join(", ") || "-") + (o.act ? ". " + o.act : "") + ".", { size: 8.8, gap: 1.8 }); });
   para("Re-run this audit at month 6 and month 12 and compare the scores with the baseline in this report. Report each KPI against its milestone, explain every miss, and say what was changed.", { size: 9 });
 
   doc.addPage(); y = TOP;
@@ -350,7 +351,7 @@ function build(S, IMG, fonts, logo, dims) {
     F("fr", 7.5, MUT); tx(S.biz.name + "  |  " + S.biz.checked, W - M, 11.2, { align: "right" });
     stroke(LINE); doc.setLineWidth(0.2); doc.line(M, 18, W - M, 18);
     doc.line(M, 285, W - M, 285);
-    F("fr", 7, MUT); tx("Student-authored plan, structured and costed by the tool. Scores use fixed rules and public information seen on the date checked." + (S.code ? "  Code " + S.code : "") + "", M, 289);
+    F("fr", 7, MUT); tx("Student-authored plan, structured and costed by the tool. Scores use fixed rules and public information." + (S.code ? "  Code " + S.code : ""), M, 289);
     tx("© " + new Date().getFullYear() + " Islandeative. All rights reserved. This tool and its scoring are owned by Islandeative.", M, 292.6);
     F("fb", 8, INK); tx(p + " / " + n, W - M, 289, { align: "right" });
   }
