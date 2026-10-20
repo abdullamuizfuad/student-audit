@@ -46,7 +46,7 @@ function monthOpts() {
 }
 function viewBiz() {
   var cur = SA.TBY[S.biz.type], grp = S.biz.group || (cur ? cur.group : "");
-  var G = [["travel", "Tourism business"], ["food", "Food and drink"], ["retail", "Shop or online seller"], ["service", "Other service"]];
+  var G = [["travel", "Tourism business"], ["food", "Food and drink"], ["retail", "Shop or online seller"], ["service", "Service business (for example HR, accounting, cleaning)"]];
   var T = SA.TYPES.filter(function (t) { return t.group === "travel"; }).map(function (t) { return [t.id, t.name]; });
   return '<h1 class="sa-h">Audit a business\'s digital presence</h1>' +
     '<p class="sa-lede">You will check the business\'s social media, Google profile, website and reviews, using only what anyone can see in public. The tool scores each part by fixed rules. Then you build your own 12-month plan: target market, objectives, strategies and evaluation. The tool structures and costs it, and gives you one PDF as evidence.</p>' +
@@ -257,7 +257,7 @@ function slider(path, label, min, max, lo, hi, o) {
 }
 function mchip(path, key, label) {
   var on = !!getp(path + "." + key);
-  return '<button type="button" class="sa-chip sm" data-tg="' + path + "." + key + '" aria-pressed="' + on + '">' + label + "</button>";
+  return '<button type="button" class="sa-chip sm" data-tg="' + esc(path + "." + key) + '" aria-pressed="' + on + '">' + label + "</button>";
 }
 function uid(prefix) { S.seq = (S.seq || 0) + 1; return prefix + S.seq; }
 
@@ -274,10 +274,10 @@ function ensureTm() {
 function newSeg() { return { id: uid("g"), name: "", s: {}, att: {}, basis: {}, target: "", why: "", extra: "", p: { ch: {}, goal: {}, pain: {}, trig: {} } }; }
 function segScore(g) { return SA.segScore(g); }
 /* chip group: single (one answer) or multiple (pick all that apply) */
-function cgroup(path, q, opts, multi, tip) {
+function cgroup(path, q, opts, multi, tip, byIdx) {
   var h = '<fieldset class="sa-fs"><legend>' + q + ' <span class="sa-pick">' + (multi ? "Pick all that apply" : "Pick one") + "</span></legend>" + (tip ? '<p class="sa-tip">' + tip + "</p>" : "") + '<div class="sa-opts">';
-  if (multi) h += opts.map(function (o, i) { return mchip(path, i, o); }).join("");
-  else { var v = getp(path); h += opts.map(function (o, i) { return '<button type="button" class="sa-chip sm" data-p="' + path + '" data-v="' + i + '" aria-pressed="' + (String(v) === String(i)) + '">' + o + "</button>"; }).join(""); }
+  if (multi) h += opts.map(function (o) { return mchip(path, o, o); }).join("");
+  else { var v = getp(path); h += opts.map(function (o, i) { var val = byIdx ? String(i) : o; return '<button type="button" class="sa-chip sm" data-p="' + path + '" data-v="' + esc(val) + '" aria-pressed="' + (String(v) === val) + '">' + o + "</button>"; }).join(""); }
   return h + "</div></fieldset>";
 }
 function placeTa(path, label, ph, tip, rows) {
@@ -291,14 +291,14 @@ function viewTm() {
   h += '<h2 class="sa-h2">2. Segments</h2><p class="sa-sub">Describe 2 to 4 groups of customers. Base them on what you can see about the business: its posts, its reviews and who it seems to serve.</p>';
   if (nb < 2) h += '<div class="sa-note">Pick at least two bases above first. Then the questions for each segment appear here.</div>';
   else T.segs.forEach(function (g, i) {
-    var b = "tm.segs." + i, sc = segScore(g), qs = SA.SEGQ.filter(function (q) { return q.b === "all" || on[q.b]; });
+    var b = "tm.segs." + i, sc = segScore(g), bb = SA.isB2B(S.biz.type, g), qs = SA.segQs(S.biz.type, g).filter(function (q) { return q.b === "all" || on[q.b]; });
     h += '<div class="sa-card sa-seg"><h3>Segment ' + (i + 1) + (g.name ? ": " + esc(g.name) : "") + "</h3>" + '<div class="sa-grid">' + txt(b + ".name", "Give the segment a short name", { wide: true, ph: "for example: weekend families from Malé" }) + "</div>";
     var cur = "";
-    qs.forEach(function (q) { var lab = { all: "", geo: "Geographic", demo: "Demographic", psy: "Psychographic", beh: "Behavioural" }[q.b]; if (lab && lab !== cur) { h += '<p class="sa-base">' + lab + "</p>"; cur = lab; } h += cgroup(b + ".s." + q.k, q.q, q.o, q.m); });
-    h += '<div class="sa-built"><small>Your segment, from your picks</small><p>' + esc(SA.segText(g)) + "</p></div>";
+    qs.forEach(function (q) { var lab = { all: "", geo: "Geographic", demo: bb ? "Firmographic (company profile)" : "Demographic", psy: "Psychographic", beh: "Behavioural" }[q.b]; if (q.k === "who") { h += cgroup(b + ".s.who", q.q, q.o, false, bb ? "Business customer: the next questions are about the companies, not people." : "Choosing a business customer switches the questions to company ones."); return; } if (lab && lab !== cur) { h += '<p class="sa-base">' + lab + "</p>"; cur = lab; } h += cgroup(b + ".s." + q.k, q.q, q.o, q.m); });
+    h += '<div class="sa-built"><small>Your segment, from your picks</small><p>' + esc(SA.segText(g, S.biz.type)) + "</p></div>";
     h += '<div class="sa-grid">' + txt(b + ".extra", "Anything to add in your own words?", { wide: true, opt: true, ph: "for example: often travel with grandparents" }) + "</div>";
     h += '<p class="sa-base">How attractive is this segment?</p>';
-    SA.ATT.forEach(function (a) { h += cgroup(b + ".att." + a.k, a.q, a.o, false, a.t); });
+    SA.ATT.forEach(function (a) { h += cgroup(b + ".att." + a.k, a.q, a.o, false, a.t, true); });
     h += '<p class="sa-ms">Attractiveness score: <b>' + sc + " out of 12</b>. A higher score usually means a better target. You decide.</p>";
     h += cgroup(b + ".basis", "What are your answers based on?", SA.BASIS, true, "Be honest. An assumption is fine if you say so in your report.");
     h += chips(b + ".target", "Will you target this segment?", [["yes", "Yes, target it"], ["no", "No"]], { re: true, sm: true });
@@ -323,11 +323,11 @@ function viewTm() {
   else {
     h += '<p class="sa-sub">One persona for each target segment: a made-up person who stands for the whole group. Keep it consistent with the segment you built.</p>';
     T.segs.forEach(function (g, i) {
-      if (g.target !== "yes") return; var b = "tm.segs." + i + ".p", s = g.s || {}, ages = SA.picks(s.age, SA.SEGQ[2].o), from = SA.picks(s.from, SA.SEGQ[1].o);
-      h += '<div class="sa-card"><h3>Persona for: ' + esc(g.name || "Segment " + (i + 1)) + '</h3><p class="sa-sub">' + esc(SA.segText(g)) + '</p><div class="sa-grid">' +
+      if (g.target !== "yes") return; var b = "tm.segs." + i + ".p", s = g.s || {}, ages = SA.chosen(s.age), from = SA.chosen(s.from), bb = SA.isB2B(S.biz.type, g), PL = SA.plists(S.biz.type, g);
+      h += '<div class="sa-card"><h3>Persona for: ' + esc(g.name || "Segment " + (i + 1)) + '</h3><p class="sa-sub">' + (bb ? "Business customers: make the persona the person who decides to buy, for example the HR or finance manager. " : "") + esc(SA.segText(g, S.biz.type)) + '</p><div class="sa-grid">' +
         txt(b + ".name", "Give them a name", { ph: "a typical name for this group" }) + txt(b + ".age", "Age", { mode: "numeric", ph: ages.length ? "within " + ages.join(" or ") : "for example 34" }) +
-        txt(b + ".loc", "Where they live", { ph: from.length ? from[0] : "city or island" }) + txt(b + ".job", "Job or role", { ph: "for example: bank officer" }) + "</div>" +
-        cgroup(b + ".goal", "What do they want?", SA.PGOAL, true) + cgroup(b + ".pain", "What frustrates them or makes them hesitate?", SA.PPAIN, true) + cgroup(b + ".trig", "What makes them buy?", SA.PTRIG, true) +
+        txt(b + ".loc", "Where they live", { ph: from.length ? from[0] : "city or island" }) + txt(b + ".job", "Job or role", { ph: bb ? "for example: HR manager at a resort" : "for example: bank officer" }) + "</div>" +
+        cgroup(b + ".goal", "What do they want?", PL.goal, true) + cgroup(b + ".pain", "What frustrates them or makes them hesitate?", PL.pain, true) + cgroup(b + ".trig", "What makes them buy?", PL.trig, true) +
         '<fieldset class="sa-fs"><legend>Where do they spend time online? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + CHANNELS.map(function (c) { return mchip(b + ".ch", c.replace(/ /g, "_"), c); }).join("") + "</div></fieldset>" +
         '<div class="sa-grid">' + txt(b + ".quote", "A line they might say", { wide: true, ph: "for example: Just tell me the full price and I will book", hint: "Write it in their voice, as one real sentence." }) + "</div></div>";
     });
@@ -342,7 +342,8 @@ function vTm() {
     var n = "Segment " + (i + 1), s = g.s || {};
     if (!String(g.name || "").trim()) e.push(n + ": give it a short name.");
     if (s.who === undefined || s.who === "") e.push(n + ": choose who they are.");
-    BASES.forEach(function (b) { if (!on[b[0]]) return; var qs = SA.SEGQ.filter(function (q) { return q.b === b[0]; }); if (!qs.some(function (q) { return q.m ? any(s[q.k]) : s[q.k] !== undefined && s[q.k] !== ""; })) e.push(n + ": pick at least one " + b[1].split(" (")[0].toLowerCase() + " option."); });
+    var allq = SA.segQs(S.biz.type, g);
+    BASES.forEach(function (b) { if (!on[b[0]]) return; var qs = allq.filter(function (q) { return q.b === b[0]; }); if (!qs.some(function (q) { return q.m ? q.o.some(function (o) { return (s[q.k] || {})[o]; }) : q.o.indexOf(s[q.k]) >= 0; })) e.push(n + ": pick at least one " + b[1].split(" (")[0].toLowerCase() + " option."); });
     if (SA.ATT.some(function (a) { var v = (g.att || {})[a.k]; return v === undefined || v === ""; })) e.push(n + ": rate size, reach online, fit and competition.");
     if (!any(g.basis)) e.push(n + ": say what your answers are based on.");
     if (!g.target) e.push(n + ": choose whether you will target it.");
@@ -358,7 +359,7 @@ function vTm() {
     if (!any(p.ch)) e.push(n + ": pick at least one place they spend time online.");
     if (!String(p.quote || "").trim()) e.push(n + ": write a line they might say.");
   });
-  T.segs.forEach(function (g) { g.who = SA.segText(g); });
+  T.segs.forEach(function (g) { g.who = SA.segText(g, S.biz.type); });
   return e.filter(function (x, i, a) { return a.indexOf(x) === i; });
 }
 
@@ -641,7 +642,7 @@ function planText(objs, plan, biz) {
 function sendCopy(res, code, A) {
   if (!COPY_URL) return Promise.resolve("not-set");
   var M = modelStuff(), uri = res.doc.output("datauristring"), b64 = uri.slice(uri.indexOf("base64,") + 7);
-  var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g) + " Why: " + (g.why || ""); }).join("\n");
+  var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g, S.biz.type) + " Why: " + (g.why || ""); }).join("\n");
   var body = { student: S.biz.student, sid: S.biz.sid, email: S.biz.email, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
     studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: S.tm.pos, answers: JSON.stringify(S), pdf: b64 };
   return fetch(COPY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function () { return "sent"; }, function () { return "failed"; });

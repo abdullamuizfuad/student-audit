@@ -176,7 +176,7 @@ function build(S, IMG, fonts, logo, dims) {
   fill(tint(ACC, 0.9)); doc.roundedRect(M, y - 5, CW, 11, 3, 3, "F"); F("fb", 8.5, ACC); tx("TARGET MARKET (written by the student, laid out by the tool)", M + 4, y + 1.5); y += 12;
   head("1. Target market", "Bases of segmentation used: " + (uk(TM.bases).map(function (k) { return BL[k]; }).join(", ") || "none") + ". Each segment is rated on size, reach online, fit with the business and competition (1 to 3 points each, 12 in total).");
   table([{ w: 32, h: "Segment" }, { w: 66, h: "Profile (from the student's picks)" }, { w: 50, h: "Size, reach, fit, competition" }, { w: 26, h: "Score / decision" }],
-    TM.segs.map(function (g) { var at = g.att || {}; return [{ t: g.name, b: true }, SA.segText(g), SA.ATT.map(function (x) { return at[x.k] !== undefined && at[x.k] !== "" ? x.o[+at[x.k]] : "-"; }).join("; "), { t: SA.segScore(g) + "/12\n" + (g.target === "yes" ? "Target" : "Not a target"), b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 7.8 });
+    TM.segs.map(function (g) { var at = g.att || {}; return [{ t: g.name, b: true }, SA.segText(g, S.biz.type), SA.ATT.map(function (x) { return at[x.k] !== undefined && at[x.k] !== "" ? x.o[+at[x.k]] : "-"; }).join("; "), { t: SA.segScore(g) + "/12\n" + (g.target === "yes" ? "Target" : "Not a target"), b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 7.8 });
   TM.segs.forEach(function (g) { para((g.target === "yes" ? "Why " : "Why not ") + g.name + ": " + String(g.why || "").trim().replace(/([^.!?])$/, "$1.") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
   y += 2;
   head("2. Positioning");
@@ -198,8 +198,8 @@ function build(S, IMG, fonts, logo, dims) {
     fill(ACC); doc.circle(M + 7, y + 3, 6, "F"); F("ax", 13, WHITE); tx(String(p.name || "?").charAt(0).toUpperCase(), M + 7, y + 6.6, { align: "center" });
     F("ax", 13, INK); tx(p.name || "Persona", M + 17, y + 2.6); F("fr", 9, MUT); tx(split("Age " + (p.age || "?") + "  |  " + (p.loc || "") + "  |  " + (p.job || ""), CW - 18)[0], M + 17, y + 7.6); y += 15;
     F("fb", 8, ACC); tx("PERSONA FOR SEGMENT: " + safe(g.name).toUpperCase(), M + 2, y); y += 5.2;
-    para("Segment: " + SA.segText(g), { size: 8.5, col: MUT, ind: 2, gap: 2 });
-    [["Wants", SA.picks(p.goal, SA.PGOAL)], ["Frustrations and hesitations", SA.picks(p.pain, SA.PPAIN)], ["What makes them buy", SA.picks(p.trig, SA.PTRIG)]].forEach(function (r) { F("fb", 8.5, INK); tx(r[0], M + 2, y); y += 4.4; para(r[1].join(", ") || "-", { size: 9, ind: 2, gap: 2 }); });
+    para("Segment: " + SA.segText(g, S.biz.type), { size: 8.5, col: MUT, ind: 2, gap: 2 });
+    [["Wants", SA.chosen(p.goal)], ["Frustrations and hesitations", SA.chosen(p.pain)], ["What makes them buy", SA.chosen(p.trig)]].forEach(function (r) { F("fb", 8.5, INK); tx(r[0], M + 2, y); y += 4.4; para(r[1].join(", ") || "-", { size: 9, ind: 2, gap: 2 }); });
     if (p.quote) { F("fr", 9.5, ACC); var ql = split('"' + p.quote + '"', CW - 8); room(ql.length * lh(9.5) + 3); F("fr", 9.5, ACC); tx(ql.join("\n"), M + 4, y); y += ql.length * lh(9.5) + 3; }
     para("Online: " + (chs.join(", ") || "-") + ".  Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.5, col: MUT, ind: 2, gap: 2 });
     para("Student to write in the report: what this persona means for the content, channels, offer and website.", { size: 8, col: MUT, ind: 2, gap: 2 });

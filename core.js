@@ -536,20 +536,66 @@ function evalRows(objs) {
 
 
 /* ---------- target market chips (shared by the screens and the PDF) ---------- */
-var SEGQ = [
-  { b: "all", k: "who", q: "Who are they?", m: false, o: ["Locals", "Expats living in the Maldives", "Foreign tourists", "Other businesses"] },
-  { b: "geo", k: "from", q: "Where are they from, or where do they live?", m: true, o: ["Malé and Hulhumalé", "Other islands", "Europe", "UK", "China", "India", "Russia", "Middle East", "Other Asia", "Other countries"] },
+/* Segment questions change with the business type. Answers are stored by label. A segment whose "Who" is a business customer gets the business (B2B) questions. */
+var DEMO = function (stage) { return [
   { b: "demo", k: "age", q: "Age", m: true, o: ["Under 18", "18 to 24", "25 to 34", "35 to 44", "45 to 54", "55 and over"] },
-  { b: "demo", k: "stage", q: "Life stage", m: true, o: ["Students", "Young singles", "Couples", "Honeymooners", "Families with children", "Groups of friends", "Working professionals", "Retirees"] },
+  { b: "demo", k: "stage", q: "Life stage", m: true, o: stage },
   { b: "demo", k: "gender", q: "Gender", m: false, o: ["Any", "Mostly women", "Mostly men"] },
-  { b: "demo", k: "spend", q: "Spending level", m: false, o: ["Budget", "Mid-range", "Premium"] },
-  { b: "psy", k: "values", q: "What they value", m: true, o: ["Adventure", "Rest and relaxation", "Nature and eco-friendly choices", "Local culture", "Luxury and status", "Health and wellness", "Family time", "Sharing online", "Saving money"] },
-  { b: "psy", k: "interest", q: "Interests", m: true, o: ["Diving and snorkelling", "Food and cafes", "Photography", "Sports and fitness", "Shopping and fashion", "Nature and the outdoors", "Nightlife and socialising", "Technology"] },
-  { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Low price", "Convenience", "A memorable experience", "Comfort", "Quality", "Speed", "Status"] },
-  { b: "beh", k: "buy", q: "How they buy", m: true, o: ["Book or order online ahead", "WhatsApp or DM", "Walk in", "Through an agent or booking site", "Delivery app"] },
-  { b: "beh", k: "when", q: "When they buy", m: true, o: ["Weekends", "School holidays", "Public holidays", "Peak season (November to April)", "Special occasions", "Any day"] },
-  { b: "beh", k: "loyal", q: "How often they buy", m: false, o: ["First-time buyers", "Occasional buyers", "Regular, loyal buyers"] }
-];
+  { b: "demo", k: "spend", q: "Spending level", m: false, o: ["Budget", "Mid-range", "Premium"] }]; };
+var SEGSETS = {
+  travel: { who: ["Foreign tourists", "Locals", "Expats living in the Maldives", "Travel agents and tour operators"], biz: ["Travel agents and tour operators"], q: [
+    { b: "geo", k: "from", q: "Where are they from?", m: true, o: ["Europe", "UK", "Russia", "China", "India", "Middle East", "Other Asia", "USA and others", "Malé and Hulhumalé", "Other islands"] }]
+    .concat(DEMO(["Solo travellers", "Couples", "Honeymooners", "Families with children", "Groups of friends", "Retirees", "Business travellers"])).concat([
+    { b: "psy", k: "values", q: "What they value", m: true, o: ["Adventure", "Rest and relaxation", "Nature and eco-friendly travel", "Local culture", "Luxury and status", "Value for money", "Wellness", "Sharing their travels online"] },
+    { b: "psy", k: "interest", q: "Interests", m: true, o: ["Diving and snorkelling", "Surfing", "Fishing", "Island hopping", "Sandbank and picnic trips", "Food", "Photography", "Spa and wellness"] },
+    { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Low price", "Easy planning", "A memorable experience", "Comfort", "Safety", "Privacy", "Flexibility"] },
+    { b: "beh", k: "buy", q: "How they book", m: true, o: ["Booking sites like Booking and Agoda", "Direct on the website", "WhatsApp or DM", "Through a travel agent", "Walk in on arrival"] },
+    { b: "beh", k: "when", q: "When they travel", m: true, o: ["Peak season (November to April)", "Low season deals (May to October)", "School holidays", "Ramadan and Eid holidays", "Public holidays", "Special occasions"] },
+    { b: "beh", k: "loyal", q: "Visit pattern", m: false, o: ["First-time visitors", "Returning guests", "Referred by friends"] }]) },
+  food: { who: ["Locals", "Expats", "Office workers", "Students", "Tourists", "Offices and events (catering)"], biz: ["Offices and events (catering)"], q: [
+    { b: "geo", k: "from", q: "Where do they live or work?", m: true, o: ["Malé", "Hulhumalé", "Villimalé", "Other islands", "Visitors and tourists"] }]
+    .concat(DEMO(["Students", "Young singles", "Couples", "Families with children", "Groups of friends", "Office workers", "Retirees"])).concat([
+    { b: "psy", k: "values", q: "What they value", m: true, o: ["Healthy eating", "Trying new food", "Value for money", "Halal and trusted ingredients", "Familiar comfort food", "Nice places to be seen", "Sharing food online", "Speed and convenience"] },
+    { b: "psy", k: "interest", q: "Interests", m: true, o: ["Coffee culture", "Desserts", "Local Maldivian food", "International cuisines", "Fitness and diet", "Socialising", "Food photography"] },
+    { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Low price", "Taste", "Speed", "Convenience", "Healthy options", "A nice place to sit", "Big portions"] },
+    { b: "beh", k: "buy", q: "How they order", m: true, o: ["Dine in", "Takeaway", "Delivery app", "WhatsApp or phone order", "Pre-order for events"] },
+    { b: "beh", k: "when", q: "When they buy", m: true, o: ["Breakfast", "Lunch break", "Evenings", "Weekends", "Ramadan iftar and suhoor", "Eid and celebrations", "Payday"] },
+    { b: "beh", k: "loyal", q: "How often they come", m: false, o: ["First-time customers", "Occasional customers", "Regulars"] }]) },
+  retail: { who: ["Locals", "Expats", "Students", "Tourists", "Other shops and resellers", "Resorts and businesses buying in bulk"], biz: ["Other shops and resellers", "Resorts and businesses buying in bulk"], q: [
+    { b: "geo", k: "from", q: "Where are they?", m: true, o: ["Malé", "Hulhumalé", "Villimalé", "Other islands (delivery)", "Anywhere online"] }]
+    .concat(DEMO(["Students", "Young singles", "Couples", "Parents with children", "Working professionals", "Retirees"])).concat([
+    { b: "psy", k: "values", q: "What they value", m: true, o: ["Latest trends", "Value for money", "Quality and brands", "Convenience", "Local and handmade", "Eco-friendly products", "Modest fashion", "Showing it online"] },
+    { b: "psy", k: "interest", q: "Interests", m: true, o: ["Fashion", "Beauty and skincare", "Home and decor", "Tech and gadgets", "Sports and fitness", "Kids and baby", "Gifts"] },
+    { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Low price", "Choice", "Quality", "Fast delivery", "Easy returns", "Original, trusted products", "Good service"] },
+    { b: "beh", k: "buy", q: "How they buy", m: true, o: ["In store", "Instagram or TikTok DM", "WhatsApp order", "Online shop", "Delivery app"] },
+    { b: "beh", k: "when", q: "When they buy", m: true, o: ["Payday", "Ramadan and Eid", "Back to school", "Sales and promotions", "Weekends", "Gifts and special occasions"] },
+    { b: "beh", k: "loyal", q: "How often they buy", m: false, o: ["First-time buyers", "Occasional buyers", "Loyal repeat buyers"] }]) },
+  service: { who: ["Households", "Individuals", "Expats", "Students", "Small businesses", "Companies and organisations", "Government offices and NGOs"], biz: ["Small businesses", "Companies and organisations", "Government offices and NGOs"], q: [
+    { b: "geo", k: "from", q: "Where are they?", m: true, o: ["Malé", "Hulhumalé", "Villimalé", "Other islands"] }]
+    .concat(DEMO(["Students", "Young professionals", "Couples", "Families with children", "Busy working parents", "Retirees", "Landlords and property owners"])).concat([
+    { b: "psy", k: "values", q: "What they value", m: true, o: ["Saving time", "Value for money", "Trust and safety", "Quality work", "Convenience", "Eco-friendly products", "Status"] },
+    { b: "psy", k: "interest", q: "Interests", m: true, o: ["Home and living", "Health and wellbeing", "Career and learning", "Personal care", "Cars and transport"] },
+    { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Low price", "Saving time", "Reliability", "Trusted staff", "Quality results", "Flexible times", "Fast response"] },
+    { b: "beh", k: "buy", q: "How they book", m: true, o: ["WhatsApp or call", "Online booking", "Walk in", "Referral from friends", "Facebook or Instagram message"] },
+    { b: "beh", k: "when", q: "When they buy", m: true, o: ["Weekends", "Before Ramadan and Eid", "When moving house", "When something breaks", "A regular monthly service", "Any day"] },
+    { b: "beh", k: "loyal", q: "How often they buy", m: false, o: ["One-off customers", "Occasional customers", "Regular contract customers"] }]) },
+  b2b: { q: [
+    { b: "geo", k: "from", q: "Where are the companies?", m: true, o: ["Malé", "Hulhumalé", "Resort islands", "Other islands", "Abroad"] },
+    { b: "demo", k: "industry", q: "Industry", m: true, o: ["Tourism and resorts", "Retail and trading", "Food and drink", "Construction and real estate", "Health and education", "Government and NGOs", "Professional services", "Fisheries and agriculture"] },
+    { b: "demo", k: "size", q: "Company size", m: false, o: ["1 to 9 staff", "10 to 49 staff", "50 to 249 staff", "250 or more staff"] },
+    { b: "demo", k: "owner", q: "Type of organisation", m: true, o: ["Family business", "Local company", "International company", "Government or state-owned", "NGO"] },
+    { b: "psy", k: "values", q: "What the company values", m: true, o: ["Cutting costs", "Staying within the law", "Growth and expansion", "Saving staff time", "Expert advice", "Reliability", "Local support they can call", "Reputation"] },
+    { b: "psy", k: "culture", q: "How the company works", m: true, o: ["Traditional and careful", "Modern and fast-moving", "Price-driven", "Quality-driven"] },
+    { b: "beh", k: "benefit", q: "What they want most", m: true, o: ["Lower cost", "Compliance and peace of mind", "Speed", "Expertise", "Reliability", "One supplier for everything"] },
+    { b: "beh", k: "buy", q: "How they buy", m: true, o: ["Quotation or tender", "Monthly retainer or contract", "One-off project", "Through referrals", "Online search"] },
+    { b: "beh", k: "when", q: "When they buy", m: true, o: ["Start of the financial year", "Year-end and audit season", "When hiring or expanding", "When a law changes", "Before peak tourist season", "Any time"] },
+    { b: "beh", k: "decider", q: "Who decides", m: true, o: ["Owner or director", "HR manager", "Finance manager", "Operations manager", "Procurement team"] },
+    { b: "beh", k: "loyal", q: "Relationship", m: false, o: ["New clients", "Occasional clients", "Long-term clients"] }] }
+};
+function segCtx(type) { var t = TBY[type]; return t ? (t.group === "travel" ? "travel" : t.group) : "service"; }
+function segWho(type) { var s = SEGSETS[segCtx(type)]; return { b: "all", k: "who", q: "Who are they?", m: false, o: s.who }; }
+function isB2B(type, g) { var s = SEGSETS[segCtx(type)], w = g && g.s ? g.s.who : ""; return s.biz.indexOf(w) >= 0; }
+function segQs(type, g) { return [segWho(type)].concat(isB2B(type, g) ? SEGSETS.b2b.q : SEGSETS[segCtx(type)].q); }
 var ATT = [
   { k: "size", q: "Size", t: "Think about how many people like this there are, from tourism or census figures, and how often they buy.", o: ["A small niche", "A steady group", "A large market"] },
   { k: "reach", q: "Reach online", t: "Are they on the platforms where the business already has accounts? Check your audit results.", o: ["Hard to find online", "On one or two platforms", "Easy to reach where the business posts"] },
@@ -560,27 +606,35 @@ var BASIS = ["The business's posts and reviews", "My audit findings", "Tourism o
 var PGOAL = ["Save money", "Save time", "Relax", "Try something new", "Spend time with family", "Impress others", "Stay healthy", "Get good quality", "Feel safe"];
 var PPAIN = ["Prices are not clear", "Hard to book or order", "Slow replies", "Few reviews or photos", "Not sure it can be trusted", "Hard to get to", "Language barrier", "Limited choice"];
 var PTRIG = ["Good reviews", "A discount or deal", "A friend's recommendation", "An influencer post", "A holiday or occasion", "A fast reply on WhatsApp", "Great photos or video", "Easy online booking"];
+var PGOAL_B = ["Cut costs", "Save staff time", "Stay within the law", "Grow the business", "Reduce risk", "Look good to the boss", "Get expert help"];
+var PPAIN_B = ["Slow suppliers", "Hidden costs", "Errors and rework", "Changing laws", "Hard to find skilled people", "No local support", "Too much paperwork"];
+var PTRIG_B = ["A referral from another company", "A clear quotation", "Case studies and results", "A free consultation", "A deadline or audit", "A new law", "Cheaper than doing it in-house"];
+function plists(type, g) { var b = isB2B(type, g); return { goal: b ? PGOAL_B : PGOAL, pain: b ? PPAIN_B : PPAIN, trig: b ? PTRIG_B : PTRIG }; }
 var ACTS = ["Change the content mix", "Change posting times or frequency", "Adjust ad targeting", "Move budget between channels", "Fix the website or booking path", "Run a promotion", "Work with an influencer", "Ask customers for reviews", "Reply faster to messages"];
-function picks(map, list) { map = map || {}; return list.filter(function (x, i) { return map[i]; }); }
+function picks(map, list) { map = map || {}; return list.filter(function (x) { return map[x]; }); }
+function chosen(map) { map = map || {}; return Object.keys(map).filter(function (k) { return map[k]; }); }
 function andJoin(a) { return a.length < 2 ? (a[0] || "") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
-function lc(x) { return /^WhatsApp/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1); }
-function segText(g) {
-  var s = (g && g.s) || {}, Q = {}; SEGQ.forEach(function (q) { Q[q.k] = q; });
-  var one = function (k) { var v = s[k]; return v === "" || v == null ? "" : Q[k].o[+v] || ""; }, many = function (k) { return picks(s[k], Q[k].o); };
-  var p = [], who = one("who"), st = many("stage");
-  p.push((st.length ? andJoin(st) : who || "People") + (st.length && who ? " (" + lc(who) + ")" : ""));
-  if (many("age").length) p.push("aged " + andJoin(many("age")));
-  if (many("from").length) p.push("from " + andJoin(many("from")));
-  if (one("gender") && one("gender") !== "Any") p.push(lc(one("gender")));
-  if (one("spend")) p.push("with a " + lc(one("spend")) + " budget");
-  if (many("values").length) p.push("who value " + andJoin(many("values").map(lc)));
-  if (many("interest").length) p.push("interested in " + andJoin(many("interest").map(lc)));
-  if (many("benefit").length) p.push("who want " + andJoin(many("benefit").map(lc)));
-  if (many("buy").length) p.push("who buy by " + andJoin(many("buy").map(lc)).replace("book or order", "booking or ordering"));
-  if (many("when").length) p.push("mostly at " + andJoin(many("when").map(lc)));
-  if (one("loyal")) p.push("mainly " + lc(one("loyal")));
-  var t = p.join(", ") + ".";
-  return t.charAt(0).toUpperCase() + t.slice(1) + (g && g.extra ? " " + g.extra : "");
+function segText(g, type) {
+  var s = (g && g.s) || {}, qs = segQs(type, g), Q = {}; qs.forEach(function (q) { Q[q.k] = q; });
+  var one = function (k) { return Q[k] && s[k] && Q[k].o.indexOf(s[k]) >= 0 ? s[k] : ""; }, many = function (k) { return Q[k] ? picks(s[k], Q[k].o) : []; };
+  var who = one("who"), lead, rest = [];
+  if (isB2B(type, g)) {
+    lead = who || "Business customers";
+    var d = [one("size"), andJoin(many("owner")).toLowerCase()].filter(Boolean); if (d.length) lead += ": " + d.join(", ");
+    if (many("industry").length) lead += ", in " + andJoin(many("industry")).toLowerCase();
+    [["from", "Location"], ["values", "Values"], ["culture", "Way of working"], ["benefit", "Want"], ["buy", "Buy through"], ["when", "Buy at"], ["decider", "Decided by"]].forEach(function (x) { if (many(x[0]).length) rest.push(x[1] + ": " + many(x[0]).join(", ")); });
+    if (one("loyal")) rest.push(one("loyal"));
+  } else {
+    var st = many("stage"); lead = st.length ? andJoin(st) + (who ? " (" + who.toLowerCase() + ")" : "") : who || "Customers";
+    if (many("age").length) lead += ", aged " + andJoin(many("age"));
+    if (many("from").length) lead += ", from " + andJoin(many("from"));
+    if (one("gender") && one("gender") !== "Any") lead += ", " + one("gender").toLowerCase();
+    if (one("spend")) lead += ", " + one("spend").toLowerCase() + " spenders";
+    [["values", "Value"], ["interest", "Interests"], ["benefit", "Want"], ["buy", { travel: "Book through", food: "Order by" }[segCtx(type)] || "Buy through"], ["when", "When"]].forEach(function (x) { if (many(x[0]).length) rest.push(x[1] + ": " + many(x[0]).join(", ")); });
+    if (one("loyal")) rest.push(one("loyal"));
+  }
+  var t = lead + "." + (rest.length ? " " + rest.join(". ") + "." : "");
+  return t + (g && g.extra ? " " + g.extra : "");
 }
 function segScore(g) { var a = (g && g.att) || {}, n = 0; ATT.forEach(function (x) { if (a[x.k] !== undefined && a[x.k] !== "") n += (+a[x.k]) + 1; }); return n; }
 var WRITE_GUIDE = [
@@ -595,7 +649,7 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { SEGQ: SEGQ, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
