@@ -283,16 +283,40 @@ function cgroup(path, q, opts, multi, tip, byIdx) {
 function placeTa(path, label, ph, tip, rows) {
   return '<div class="f wide"><label for="f_' + path + '">' + label + '</label><textarea id="f_' + path + '" data-p="' + path + '" rows="' + (rows || 3) + '" placeholder="' + esc(ph) + '">' + esc(getp(path)) + "</textarea>" + (tip ? '<span class="sa-hint">' + tip + "</span>" : "") + "</div>";
 }
+function tmPages() {
+  ensureTm(); var T = S.tm, on = T.bases || {}, nb = BASES.filter(function (b) { return on[b[0]]; }).length, P = ["bases"];
+  if (nb >= 2) { T.segs.forEach(function (g, i) { P.push("seg:" + i); }); P.push("pos"); T.segs.forEach(function (g, i) { if (g.target === "yes") P.push("per:" + i); }); }
+  return P;
+}
+function tmCur() { var P = tmPages(); S.tsub = Math.max(0, Math.min(P.length - 1, +S.tsub || 0)); return P[S.tsub]; }
+function tmLabel(pg) {
+  var T = S.tm, k = pg.split(":"), i = +k[1];
+  if (k[0] === "bases") return "Bases of segmentation";
+  if (k[0] === "seg") return "Segment " + (i + 1) + " of " + T.segs.length;
+  if (k[0] === "pos") return "Positioning";
+  var tg = T.segs.filter(function (g) { return g.target === "yes"; }); return "Persona " + (tg.indexOf(T.segs[i]) + 1) + " of " + tg.length;
+}
+function tmNav(pg) {
+  var P = tmPages(), cur = P.indexOf(pg), sec = [["bases", "Bases"], ["seg", "Segments"], ["pos", "Positioning"], ["per", "Personas"]];
+  return '<div class="sa-subnav">' + sec.map(function (s) {
+    var first = -1; P.forEach(function (p, i) { if (first < 0 && p.split(":")[0] === s[0]) first = i; });
+    var here = pg.split(":")[0] === s[0], done = first >= 0 && first < cur && !here;
+    return '<button type="button" class="sa-subn' + (here ? " on" : done ? " done" : "") + '"' + (first >= 0 && first <= cur ? ' data-tsub="' + first + '"' : " disabled") + ">" + s[1] + "</button>";
+  }).join("") + "</div>";
+}
 function viewTm() {
-  ensureTm(); var T = S.tm, h = '<h1 class="sa-h">Your target market</h1>' +
-    '<p class="sa-lede">Build the segments by tapping the options that describe each group. Rate how attractive each one is, choose your targets, write the positioning, and fill in one persona for each target. The tool lays it all out in your report.</p>';
-  h += '<div class="sa-card"><h3>1. Bases of segmentation</h3><p class="sa-tip">Which ways will you use to split the market? <b>Pick at least two.</b> The questions for each segment follow what you pick here.</p><div class="sa-opts">' + BASES.map(function (b) { return mchip("tm.bases", b[0], b[1]); }).join("") + "</div></div>";
-  var on = T.bases || {}, nb = BASES.filter(function (b) { return on[b[0]]; }).length;
-  h += '<h2 class="sa-h2">2. Segments</h2><p class="sa-sub">Describe 2 to 4 groups of customers. Base them on what you can see about the business: its posts, its reviews and who it seems to serve.</p>';
-  if (nb < 2) h += '<div class="sa-note">Pick at least two bases above first. Then the questions for each segment appear here.</div>';
-  else T.segs.forEach(function (g, i) {
+  ensureTm(); var T = S.tm, pg = tmCur(), k = pg.split(":"), i = +k[1], on = T.bases || {};
+  var h = '<h1 class="sa-h">Your target market</h1>' + tmNav(pg);
+  if (k[0] === "bases") {
+    h += '<p class="sa-lede">Build the segments by tapping the options that describe each group. Rate how attractive each one is, choose your targets, then do the positioning and one persona for each target. One part at a time: press Next when each part is done.</p>';
+    h += '<div class="sa-card"><h3>Bases of segmentation</h3><p class="sa-tip">Which ways will you use to split the market? <b>Pick at least two.</b> The questions for each segment follow what you pick here.</p><div class="sa-opts">' + BASES.map(function (b) { return mchip("tm.bases", b[0], b[1]); }).join("") + "</div></div>";
+    return h;
+  }
+  if (k[0] === "seg") {
+    var g = T.segs[i];
+    if (i === 0) h += '<p class="sa-sub">Describe 2 to 4 groups of customers, one at a time. Base them on what you can see about the business: its posts, its reviews and who it seems to serve.</p>';
     var b = "tm.segs." + i, sc = segScore(g), bb = SA.isB2B(S.biz.type, g), qs = SA.segQs(S.biz.type, g).filter(function (q) { return q.b === "all" || on[q.b]; });
-    h += '<div class="sa-card sa-seg"><h3>Segment ' + (i + 1) + (g.name ? ": " + esc(g.name) : "") + "</h3>" + '<div class="sa-grid">' + txt(b + ".name", "Give the segment a short name", { wide: true, ph: "for example: weekend families from Malé" }) + "</div>";
+    h += '<div class="sa-card sa-seg"><h3>Segment ' + (i + 1) + ' of ' + T.segs.length + (g.name ? ": " + esc(g.name) : "") + "</h3>" + '<div class="sa-grid">' + txt(b + ".name", "Give the segment a short name", { wide: true, ph: "for example: weekend families from Malé" }) + "</div>";
     var cur = "";
     qs.forEach(function (q) { var lab = { all: "", geo: "Geographic", demo: bb ? "Firmographic (company profile)" : "Demographic", psy: "Psychographic", beh: "Behavioural" }[q.b]; if (q.k === "who") { h += cgroup(b + ".s.who", q.q, q.o, false, bb ? "Business customer: the next questions are about the companies, not people." : "Choosing a business customer switches the questions to company ones."); return; } if (lab && lab !== cur) { h += '<p class="sa-base">' + lab + "</p>"; cur = lab; } h += cgroup(b + ".s." + q.k, q.q, q.o, q.m); });
     h += '<div class="sa-built"><small>Your segment, from your picks</small><p>' + esc(SA.segText(g, S.biz.type)) + "</p></div>";
@@ -305,31 +329,37 @@ function viewTm() {
     if (g.target) h += '<div class="sa-built"><small>Your decision, from your ratings</small><p>' + esc(SA.segReason(g)) + "</p></div>" + '<div class="sa-grid">' + txt(b + ".fact", "One fact that backs this up", { wide: true, opt: g.target !== "yes", ph: "for example: Audit: 4 of 5 recent Google reviews mention families", hint: "A finding, a statistic or something you saw. The full argument goes in your report." }) + "</div>";
     if (T.segs.length > 2) h += '<div style="margin-top:8px"><button type="button" class="sa-btn-s" data-rmseg="' + i + '">Remove this segment</button></div>';
     h += "</div>";
-  });
-  if (nb >= 2 && T.segs.length < 4) h += '<div class="sa-actions" style="margin:0 0 24px"><button type="button" class="sa-btn-s" id="saAddSeg">Add another segment</button></div>';
-  h += viewPos();
-  var tg = T.segs.filter(function (g) { return g.target === "yes"; });
-  h += '<h2 class="sa-h2">4. Ideal customer personas</h2>';
-  if (!tg.length) h += '<p class="sa-sub">Choose at least one target segment above. You will get one persona card for each.</p>';
-  else {
-    h += '<p class="sa-sub">One persona for each target segment: a made-up person who stands for the whole group. Keep it consistent with the segment you built.</p>';
-    T.segs.forEach(function (g, i) {
-      if (g.target !== "yes") return; var b = "tm.segs." + i + ".p", s = g.s || {}, ages = SA.chosen(s.age), from = SA.chosen(s.from), bb = SA.isB2B(S.biz.type, g), PL = SA.plists(S.biz.type, g);
+    return h;
+  }
+  if (k[0] === "pos") return h + viewPos();
+  var g = T.segs[i];
+  h += '<p class="sa-sub">A persona is a made-up person who stands for the whole segment. Keep it consistent with the segment you built.</p>';
+      var b = "tm.segs." + i + ".p", s = g.s || {}, ages = SA.chosen(s.age), from = SA.chosen(s.from), bb = SA.isB2B(S.biz.type, g), PL = SA.plists(S.biz.type, g);
       h += '<div class="sa-card"><h3>Persona for: ' + esc(g.name || "Segment " + (i + 1)) + '</h3><p class="sa-sub">' + (bb ? "Business customers: make the persona the person who decides to buy, for example the HR or finance manager. " : "") + esc(SA.segText(g, S.biz.type)) + '</p><div class="sa-grid">' +
         txt(b + ".name", "Give them a name", { ph: "a typical name for this group" }) + txt(b + ".age", "Age", { mode: "numeric", ph: ages.length ? "within " + ages.join(" or ") : "for example 34" }) +
         txt(b + ".loc", "Where they live", { ph: from.length ? from[0] : "city or island" }) + txt(b + ".job", "Job or role", { ph: bb ? "for example: HR manager at a resort" : "for example: bank officer" }) + "</div>" +
         cgroup(b + ".goal", "What do they want?", PL.goal, true) + cgroup(b + ".pain", "What frustrates them or makes them hesitate?", PL.pain, true) + cgroup(b + ".trig", "What makes them buy?", PL.trig, true) +
         '<fieldset class="sa-fs"><legend>Where do they spend time online? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + CHANNELS.map(function (c) { return mchip(b + ".ch", c.replace(/ /g, "_"), c); }).join("") + "</div></fieldset>" +
         '<div class="sa-grid">' + txt(b + ".quote", "A line they might say", { wide: true, ph: "for example: Just tell me the full price and I will book", hint: "Write it in their voice, as one real sentence." }) + "</div></div>";
-    });
-  }
   return h;
+}
+function tmErrPage(path) {
+  var P = tmPages(), m = /^tm\.segs\.(\d+)\.(p\b)?/.exec(path || "");
+  if (/^tm\.bases/.test(path)) return 0;
+  if (/^tm\.pos/.test(path)) return P.indexOf("pos");
+  if (m) return P.indexOf((m[2] ? "per:" : "seg:") + m[1]);
+  if (path === "tm.segs") { var last = -1; P.forEach(function (p, j) { if (p.indexOf("seg:") === 0) last = j; }); return last; }
+  return -1;
+}
+function vTmPage() {
+  var cur = +S.tsub || 0;
+  return vTm().filter(function (x) { return tmErrPage(String(x).split("@@")[1]) === cur; });
 }
 function viewPos() {
   var T = S.tm, P = T.pos || (T.pos = {}), PS = SA.posSet(S.biz.type), tg = T.segs.filter(function (g) { return g.target === "yes"; });
   if (!P.cat) P.cat = PS.cat[S.biz.type] || PS.cat[Object.keys(PS.cat)[0]];
   if (!P.ax) { P.ax = PS.ax[0][0]; P.ay = PS.ax[1][0]; }
-  var h = '<h2 class="sa-h2">3. Positioning</h2><p class="sa-sub">Tap to build the positioning statement. It decides how the business wants the target segment to see it compared with a competitor.</p><div class="sa-card">';
+  var h = '<p class="sa-sub">Tap to build the positioning statement. It decides how the business wants the target segment to see it compared with a competitor.</p><div class="sa-card">';
   if (!tg.length) return h + '<p class="sa-sub">Choose at least one target segment above first.</p></div>';
   h += chips("tm.pos.seg", '1. For which target segment? <span class="sa-pick">Pick one</span>', tg.map(function (g) { return [g.id, esc(g.name || "Unnamed segment")]; }), { sm: true });
   var sg = tg.filter(function (g) { return g.id === P.seg; })[0], wants = sg ? SA.chosen((sg.s || {}).benefit) : [];
@@ -576,13 +606,15 @@ function stepsSkip(i, dir) { return i; }
 function render(keepScroll) {
   var i = S.step; $("saStep").innerHTML = VIEW[i]();
   $("saBar").style.transform = "scaleX(" + ((i + 1) / STEPS.length) + ")";
-  $("saStepNo").textContent = "Step " + (i + 1) + " of " + STEPS.length + ": " + STEPS[i];
+  $("saStepNo").textContent = "Step " + (i + 1) + " of " + STEPS.length + ": " + STEPS[i] + (i === 6 ? " (" + tmLabel(tmCur()) + ")" : "");
+  var tcur = i === 6 ? tmCur() : "", tlast = i === 6 && S.tm ? "seg:" + (S.tm.segs.length - 1) : "";
+  $("saAddSegNav").hidden = !(i === 6 && tcur === tlast && S.tm.segs.length < 4);
   $("saPrev").style.visibility = i === 0 ? "hidden" : "visible";
   $("saNext").textContent = i === 5 ? "Start building my plan" : i === 9 ? "Continue to download" : "Next";
   $("saNav").hidden = i === 10;
   $("saErr").innerHTML = "";
   if (i === 8) refreshBudget();
-  if (!keepScroll) { window.scrollTo({ top: 0 }); $("saStep").focus({ preventScroll: true }); }
+  if (!keepScroll) { window.scrollTo({ top: 0, behavior: "instant" }); $("saStep").focus({ preventScroll: true }); }
   save();
 }
 function go(n) { S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
@@ -590,6 +622,7 @@ function showErr(e) {
   $("saErr").innerHTML = (e.length > 1 ? '<li class="sa-err-h">Tap an item to jump to it.</li>' : "") + e.slice(0, 10).map(function (x) { var p = String(x).split("@@"); return p[1] ? '<li><button type="button" class="sa-errgo" data-go="' + esc(p[1]) + '">' + esc(p[0]) + "</button></li>" : "<li>" + esc(p[0]) + "</li>"; }).join("") + (e.length > 10 ? "<li>And " + (e.length - 10) + " more.</li>" : "");
 }
 function jumpTo(path) {
+  if (S.step === 6) { var pi = tmErrPage(path); if (pi >= 0 && pi !== (+S.tsub || 0)) { var keep = $("saErr").innerHTML; S.tsub = pi; render(); $("saErr").innerHTML = keep; setTimeout(function () { jumpTo(path); }, 60); return; } }
   var el = path.indexOf("shot:") === 0 ? document.querySelector('[data-shot="' + path.slice(5) + '"]') : null, cs = function (s) { return s.replace(/"/g, '\\"'); };
   if (!el) el = document.querySelector('[data-p="' + cs(path) + '"],[data-tg="' + cs(path) + '"]') || document.querySelector('[data-p^="' + cs(path) + '."],[data-tg^="' + cs(path) + '."]');
   if (!el) return;
@@ -600,23 +633,34 @@ function jumpTo(path) {
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) setTimeout(function () { try { el.focus({ preventScroll: true }); } catch (x) {} }, 350);
 }
 $("saNext").addEventListener("click", function () {
+  if (S.step === 6) { var tp = tmPages(), te = vTmPage(); if (te.length) { showErr(te); return; } if ((+S.tsub || 0) < tp.length - 1) { S.tsub = (+S.tsub || 0) + 1; render(); return; } }
   var e = VALID[S.step](); if (e.length) { showErr(e); return; }
+  if (S.step === 5) S.tsub = 0;
   if (S.step === 5) { S.plan = null; S.model = null; }
   go(S.step + 1);
 });
-$("saPrev").addEventListener("click", function () { go(S.step - 1); });
+$("saPrev").addEventListener("click", function () {
+  if (S.step === 6 && (+S.tsub || 0) > 0) { S.tsub = (+S.tsub || 0) - 1; render(); return; }
+  if (S.step === 7) S.tsub = tmPages().length - 1;
+  go(S.step - 1);
+});
+$("saAddSegNav").addEventListener("click", function () {
+  var te = vTmPage(); if (te.length) { showErr(te); return; }
+  ensureTm(); S.tm.segs.push(newSeg()); S.tsub = tmPages().indexOf("seg:" + (S.tm.segs.length - 1)); render();
+});
 
 /* generic input handling */
 document.addEventListener("click", function (ev) {
   var t = ev.target.closest("button"); if (!t) return;
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
+  if (t.dataset.tsub !== undefined) { S.tsub = +t.dataset.tsub; render(); return; }
   if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; S.plan = null; render(true); return; }
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
   if (t.dataset.tg) { var tp = t.dataset.tg; if (t.dataset.max && !getp(tp)) { var par = tp.slice(0, tp.lastIndexOf(".")); if (SA.chosen(getp(par)).length >= +t.dataset.max) { showErr(["Pick up to " + t.dataset.max + ". Untick one first."]); return; } } setp(tp, !getp(tp)); render(true); return; }
   if (t.id === "saAddSeg") { ensureTm(); S.tm.segs.push(newSeg()); render(true); return; }
-  if (t.dataset.rmseg !== undefined) { S.tm.segs.splice(+t.dataset.rmseg, 1); render(true); return; }
+  if (t.dataset.rmseg !== undefined) { S.tm.segs.splice(+t.dataset.rmseg, 1); render(); return; }
   if (t.id === "saEdit2") { go(8); return; }
   if (t.id === "saAddObj") { S.objs.push({ id: uid("o"), text: "", kpi: "", unit: "%", base: "", target: "", deadline: 12, tool: "", freq: "Monthly", q: ["", "", ""], trig: 10, act: "" }); render(true); return; }
   if (t.dataset.rm !== undefined) { if (S.objs.length <= 3 && !confirm("The assignment needs at least 3 objectives. Remove this one anyway?")) return; S.objs.splice(+t.dataset.rm, 1); render(true); return; }

@@ -243,3 +243,11 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}
 .sa-errgo:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
 @keyframes sa-flash{0%,100%{box-shadow:0 0 0 0 transparent}20%,70%{box-shadow:0 0 0 4px color-mix(in srgb,var(--teal) 55%,transparent)}}
 .sa-flash{animation:sa-flash 1.8s ease;border-radius:14px}
+.sa-nav-r{display:flex;gap:10px}
+.sa-subnav{display:flex;gap:6px;margin:4px 0 18px;overflow-x:auto;scrollbar-width:none}
+.sa-subnav::-webkit-scrollbar{display:none}
+.sa-subn{flex:1;min-width:max-content;border:0;border-bottom:3px solid var(--line);background:none;padding:8px 6px;font:inherit;font-size:.85rem;font-weight:700;color:var(--muted);cursor:pointer}
+.sa-subn.on{color:var(--ink);border-color:var(--teal)}
+.sa-subn.done{color:var(--ink);border-color:color-mix(in srgb,var(--green) 60%,transparent)}
+.sa-subn:disabled{cursor:default;opacity:.5}
+@media(max-width:640px){.sa-nav-r{flex:2}.sa-nav-r .btn{flex:1;padding-inline:12px}}
