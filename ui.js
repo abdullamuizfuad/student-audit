@@ -65,10 +65,10 @@ function vBiz() {
   var e = [], b = S.biz;
   if (!b.student.trim()) e.push("Add your name.");
   if (!String(b.sid || "").trim()) e.push("Add your student ID.");
-  if (!b.name.trim()) e.push("Add the business name.");
-  if (!b.type) e.push(b.group === "travel" ? "Choose which kind of tourism business." : "Choose the kind of business.");
-  if (!b.onLocation) e.push("Say whether customers come to a location.");
-  if (!S.site.has) e.push("Say whether the business has a website.");
+  if (!b.name.trim()) e.push("Add the business name." + "@@" + "biz.name");
+  if (!b.type) e.push(b.group === "travel" ? "Choose which kind of tourism business." : "Choose the kind of business." + "@@" + "biz.group");
+  if (!b.onLocation) e.push("Say whether customers come to a location." + "@@" + "biz.onLocation");
+  if (!S.site.has) e.push("Say whether the business has a website." + "@@" + "site.has");
   return e;
 }
 
@@ -109,19 +109,19 @@ function vSocial() {
   var e = [];
   SA.PLATS.forEach(function (p) {
     var a = S.social[p.id] || {};
-    if (!a.status) { e.push(p.name + ": choose one of the three answers."); return; }
+    if (!a.status) { e.push(p.name + ": choose one of the three answers." + "@@" + "social." + p.id + ".status"); return; }
     if (a.status === "none") return;
-    if (SA.num(a.followers) == null) e.push(p.name + ": enter the number of followers.");
-    if (!a.lastBand) { e.push(p.name + ": choose when the last post was."); }
+    if (SA.num(a.followers) == null) e.push(p.name + ": enter the number of followers." + "@@" + "social." + p.id + ".followers");
+    if (!a.lastBand) { e.push(p.name + ": choose when the last post was." + "@@" + "social." + p.id + ".lastBand"); }
     else {
       if (a.lastBand !== "never") {
-        if (a.status === "active" && !a.freqBand) e.push(p.name + ": choose how far back the third newest post goes.");
+        if (a.status === "active" && !a.freqBand) e.push(p.name + ": choose how far back the third newest post goes." + "@@" + "social." + p.id + ".freqBand");
         var n = SA.engCount(a);
-        if (!a.likesHidden && n < (a.fewPosts ? 1 : 2)) e.push(p.name + ": give the likes and the comments band for at least " + (a.fewPosts ? "1 post" : "2 of the 3 newest posts") + ", or tick that likes are hidden.");
+        if (!a.likesHidden && n < (a.fewPosts ? 1 : 2)) e.push(p.name + ": give the likes and the comments band for at least " + (a.fewPosts ? "1 post" : "2 of the 3 newest posts") + ", or tick that likes are hidden." + "@@" + "social." + p.id + ".eng");
       }
-      if (a.wasActive && !a.lastYear) e.push(p.name + ": choose the last year the business was active, or untick that box.");
+      if (a.wasActive && !a.lastYear) e.push(p.name + ": choose the last year the business was active, or untick that box." + "@@" + "social." + p.id + ".lastYear");
     }
-    if (!a.bio) e.push(p.name + ": answer the bio question."); if (!a.link) e.push(p.name + ": answer the link question.");
+    if (!a.bio) e.push(p.name + ": answer the bio question." + "@@" + "social." + p.id + ".bio"); if (!a.link) e.push(p.name + ": answer the link question." + "@@" + "social." + p.id + ".link");
   });
   return e;
 }
@@ -143,7 +143,7 @@ function viewGbp() {
 function vGbp() {
   var e = [], g = S.gbp;
   if (!g.status) return ["Choose an answer about the Google Business Profile."];
-  if (g.status === "yes" || g.status === "unclaimed") SA.GBP_CHECKS.forEach(function (c) { if (c.id === "claimed" && g.status === "unclaimed") return; if (!(g.checks || {})[c.id]) e.push("Answer: " + c.q); });
+  if (g.status === "yes" || g.status === "unclaimed") SA.GBP_CHECKS.forEach(function (c) { if (c.id === "claimed" && g.status === "unclaimed") return; if (!(g.checks || {})[c.id]) e.push("Answer: " + c.q + "@@" + "gbp.checks." + c.id); });
   return e;
 }
 
@@ -176,9 +176,9 @@ function viewSite() {
 }
 function vSite() {
   var s = S.site, e = [];
-  if (s.has === "no") { [["linkhub", "social bio link"], ["wa", "WhatsApp link"], ["book", "online booking or ordering"], ["found", "contact found by googling"]].forEach(function (x) { if (!(s.subs || {})[x[0]]) e.push("Answer the row about " + x[1] + ", or tap None of these."); }); return e; }
-  if (!domainOf(s.url)) e.push("Type the website address.");
-  SA.SITE_CHECKS.forEach(function (c) { if (c.id === "fast" && SA.num(s.perf) != null) return; if (!(s.checks || {})[c.id]) e.push("Answer: " + c.q); });
+  if (s.has === "no") { [["linkhub", "social bio link"], ["wa", "WhatsApp link"], ["book", "online booking or ordering"], ["found", "contact found by googling"]].forEach(function (x) { if (!(s.subs || {})[x[0]]) e.push("Answer the row about " + x[1] + ", or tap None of these." + "@@" + "site.subs." + x[0]); }); return e; }
+  if (!domainOf(s.url)) e.push("Type the website address." + "@@" + "site.url");
+  SA.SITE_CHECKS.forEach(function (c) { if (c.id === "fast" && SA.num(s.perf) != null) return; if (!(s.checks || {})[c.id]) e.push("Answer: " + c.q + "@@" + "site.checks." + c.id); });
   return e;
 }
 
@@ -212,16 +212,16 @@ function vRep() {
   var e = [], now = S.biz.checked, list = SA.repPlatforms(S.biz.type);
   list.forEach(function (pl) {
     var a = S.rep[pl.id] || {};
-    if (!a.status) { if (!pl.optional) e.push(pl.name + ": choose whether the business is listed."); return; }
+    if (!a.status) { if (!pl.optional) e.push(pl.name + ": choose whether the business is listed." + "@@" + "rep." + pl.id + ".status"); return; }
     if (a.status === "none") return;
-    var sc = SA.num(a.rating); if (sc == null || sc <= 0 || sc > pl.scale) e.push(pl.name + ": enter the rating, a number up to " + pl.scale + ".");
-    if (SA.num(a.count) == null) e.push(pl.name + ": enter the number of reviews.");
-    if (!a.lastDate) e.push(pl.name + ": enter the date of the newest review."); else if (SA.daysBetween(a.lastDate, now) < 0) e.push(pl.name + ": the newest review date is in the future.");
-    var r = SA.num(a.replies); if (r == null || r < 0 || r > 5) e.push(pl.name + ": enter how many of the 5 comments have owner replies (0 to 5).");
-    if (!IMG[pl.id]) e.push(pl.name + ": upload a screenshot.");
+    var sc = SA.num(a.rating); if (sc == null || sc <= 0 || sc > pl.scale) e.push(pl.name + ": enter the rating, a number up to " + pl.scale + "." + "@@" + "rep." + pl.id + ".rating");
+    if (SA.num(a.count) == null) e.push(pl.name + ": enter the number of reviews." + "@@" + "rep." + pl.id + ".count");
+    if (!a.lastDate) e.push(pl.name + ": enter the date of the newest review." + "@@" + "rep." + pl.id + ".lastDate"); else if (SA.daysBetween(a.lastDate, now) < 0) e.push(pl.name + ": the newest review date is in the future." + "@@" + "rep." + pl.id + ".lastDate");
+    var r = SA.num(a.replies); if (r == null || r < 0 || r > 5) e.push(pl.name + ": enter how many of the 5 comments have owner replies (0 to 5)." + "@@" + "rep." + pl.id + ".replies");
+    if (!IMG[pl.id]) e.push(pl.name + ": upload a screenshot." + "@@" + "shot:" + pl.id);
     var need = Math.min(5, Math.max(1, SA.num(a.count) || 5)), got = 0;
-    for (var i = 0; i < 5; i++) { var c = SA.arr(a.comments)[i] || {}; if (c.d && String(c.t || "").trim()) { got++; if (SA.daysBetween(c.d, now) < 0) e.push(pl.name + ": comment " + (i + 1) + " has a future date."); } else if (c.d || String(c.t || "").trim()) e.push(pl.name + ": comment " + (i + 1) + " needs both a date and the text."); }
-    if (got < need) e.push(pl.name + ": enter " + need + " recent comments with dates (you have " + got + ").");
+    for (var i = 0; i < 5; i++) { var c = SA.arr(a.comments)[i] || {}; if (c.d && String(c.t || "").trim()) { got++; if (SA.daysBetween(c.d, now) < 0) e.push(pl.name + ": comment " + (i + 1) + " has a future date." + "@@" + "rep." + pl.id + ".comments"); } else if (c.d || String(c.t || "").trim()) e.push(pl.name + ": comment " + (i + 1) + " needs both a date and the text." + "@@" + "rep." + pl.id + ".comments"); }
+    if (got < need) e.push(pl.name + ": enter " + need + " recent comments with dates (you have " + got + ")." + "@@" + "rep." + pl.id + ".comments");
   });
   return e;
 }
@@ -354,35 +354,35 @@ function viewPos() {
 function vTm() {
   ensureTm(); var e = [], T = S.tm, on = T.bases || {}, nb = BASES.filter(function (b) { return on[b[0]]; }).length;
   var any = function (m) { return Object.keys(m || {}).some(function (k) { return m[k]; }); };
-  if (nb < 2) { e.push("Pick at least two bases of segmentation."); return e; }
+  if (nb < 2) { e.push("Pick at least two bases of segmentation." + "@@" + "tm.bases"); return e; }
   T.segs.forEach(function (g, i) {
     var n = "Segment " + (i + 1), s = g.s || {};
-    if (!String(g.name || "").trim()) e.push(n + ": give it a short name.");
-    if (s.who === undefined || s.who === "") e.push(n + ": choose who they are.");
+    if (!String(g.name || "").trim()) e.push(n + ": give it a short name." + "@@" + "tm.segs." + i + ".name");
+    if (s.who === undefined || s.who === "") e.push(n + ": choose who they are." + "@@" + "tm.segs." + i + ".s.who");
     var allq = SA.segQs(S.biz.type, g);
-    BASES.forEach(function (b) { if (!on[b[0]]) return; var qs = allq.filter(function (q) { return q.b === b[0]; }); if (!qs.some(function (q) { return q.m ? q.o.some(function (o) { return (s[q.k] || {})[o]; }) : q.o.indexOf(s[q.k]) >= 0; })) e.push(n + ": pick at least one " + b[1].split(" (")[0].toLowerCase() + " option."); });
-    if (SA.ATT.some(function (a) { var v = (g.att || {})[a.k]; return v === undefined || v === ""; })) e.push(n + ": rate size, reach online, fit and competition.");
-    if (!any(g.basis)) e.push(n + ": say what your answers are based on.");
-    if (!g.target) e.push(n + ": choose whether you will target it.");
-    else if (g.target === "yes" && words(g.fact) < 3) e.push(n + ": add one fact that backs up targeting it.");
+    BASES.forEach(function (b) { if (!on[b[0]]) return; var qs = allq.filter(function (q) { return q.b === b[0]; }); if (!qs.some(function (q) { return q.m ? q.o.some(function (o) { return (s[q.k] || {})[o]; }) : q.o.indexOf(s[q.k]) >= 0; })) e.push(n + ": pick at least one " + b[1].split(" (")[0].toLowerCase() + " option." + "@@" + "tm.segs." + i + ".s"); });
+    if (SA.ATT.some(function (a) { var v = (g.att || {})[a.k]; return v === undefined || v === ""; })) e.push(n + ": rate size, reach online, fit and competition." + "@@" + "tm.segs." + i + ".att");
+    if (!any(g.basis)) e.push(n + ": say what your answers are based on." + "@@" + "tm.segs." + i + ".basis");
+    if (!g.target) e.push(n + ": choose whether you will target it." + "@@" + "tm.segs." + i + ".target");
+    else if (g.target === "yes" && words(g.fact) < 3) e.push(n + ": add one fact that backs up targeting it." + "@@" + "tm.segs." + i + ".fact");
   });
-  if (!T.segs.some(function (g) { return g.target === "yes"; })) e.push("Choose at least one target segment.");
+  if (!T.segs.some(function (g) { return g.target === "yes"; })) e.push("Choose at least one target segment." + "@@" + "tm.segs");
   var P = T.pos || {}, cnt = function (m) { return SA.chosen(m).length; };
-  if (!P.seg || !T.segs.some(function (g) { return g.id === P.seg && g.target === "yes"; })) e.push("Positioning: choose the target segment.");
-  if (!cnt(P.need)) e.push("Positioning: pick what they want.");
-  if (!String(P.cat || "").trim()) e.push("Positioning: say what kind of business it is.");
-  if (!P.ben) e.push("Positioning: pick its main benefit.");
-  if (!String(P.comp || "").trim()) e.push("Positioning: name the main competitor.");
-  if (!cnt(P.diff)) e.push("Positioning: pick how it is different.");
-  if (!cnt(P.proof)) e.push("Positioning: pick what proves it.");
-  if (P.ax === P.ay) e.push("Positioning map: choose two different things to compare.");
-  if (!P.rx || !P.ry) e.push("Positioning map: say how the business compares with the competitor on both.");
+  if (!P.seg || !T.segs.some(function (g) { return g.id === P.seg && g.target === "yes"; })) e.push("Positioning: choose the target segment." + "@@" + "tm.pos.seg");
+  if (!cnt(P.need)) e.push("Positioning: pick what they want." + "@@" + "tm.pos.need");
+  if (!String(P.cat || "").trim()) e.push("Positioning: say what kind of business it is." + "@@" + "tm.pos.cat");
+  if (!P.ben) e.push("Positioning: pick its main benefit." + "@@" + "tm.pos.ben");
+  if (!String(P.comp || "").trim()) e.push("Positioning: name the main competitor." + "@@" + "tm.pos.comp");
+  if (!cnt(P.diff)) e.push("Positioning: pick how it is different." + "@@" + "tm.pos.diff");
+  if (!cnt(P.proof)) e.push("Positioning: pick what proves it." + "@@" + "tm.pos.proof");
+  if (P.ax === P.ay) e.push("Positioning map: choose two different things to compare." + "@@" + "tm.pos.ay");
+  if (!P.rx || !P.ry) e.push("Positioning map: say how the business compares with the competitor on both." + "@@" + "tm.pos.rx");
   T.segs.forEach(function (g, i) {
     if (g.target !== "yes") return; var p = g.p || {}, n = "Persona for " + (g.name || "segment " + (i + 1));
-    if (!String(p.name || "").trim() || SA.num(p.age) == null) e.push(n + ": add a name and an age.");
-    if (!any(p.goal) || !any(p.pain) || !any(p.trig)) e.push(n + ": pick what they want, what frustrates them and what makes them buy.");
-    if (!any(p.ch)) e.push(n + ": pick at least one place they spend time online.");
-    if (!String(p.quote || "").trim()) e.push(n + ": write a line they might say.");
+    if (!String(p.name || "").trim() || SA.num(p.age) == null) e.push(n + ": add a name and an age." + "@@" + "tm.segs." + i + ".p.name");
+    if (!any(p.goal) || !any(p.pain) || !any(p.trig)) e.push(n + ": pick what they want, what frustrates them and what makes them buy." + "@@" + "tm.segs." + i + ".p.goal");
+    if (!any(p.ch)) e.push(n + ": pick at least one place they spend time online." + "@@" + "tm.segs." + i + ".p.ch");
+    if (!String(p.quote || "").trim()) e.push(n + ": write a line they might say." + "@@" + "tm.segs." + i + ".p.quote");
   });
   T.segs.forEach(function (g) { g.who = SA.segText(g, S.biz.type); });
   return e.filter(function (x, i, a) { return a.indexOf(x) === i; });
@@ -435,11 +435,11 @@ function vObj() {
   if (S.objs.length < 3) e.push("The assignment needs at least 3 objectives.");
   S.objs.forEach(function (o, i) {
     var n = "Objective " + (i + 1);
-    if (words(o.text) < 8) e.push(n + ": write it out in at least 8 words.");
-    if (!String(o.kpi).trim()) e.push(n + ": name the KPI.");
+    if (words(o.text) < 8) e.push(n + ": write it out in at least 8 words." + "@@" + "objs." + i + ".text");
+    if (!String(o.kpi).trim()) e.push(n + ": name the KPI." + "@@" + "objs." + i + ".kpi");
     var b = SA.num(o.base), t = SA.num(o.target);
-    if (b == null) e.push(n + ": enter a baseline number."); if (t == null) e.push(n + ": enter a target number.");
-    if (b != null && t != null && t === b) e.push(n + ": the target is the same as the baseline.");
+    if (b == null) e.push(n + ": enter a baseline number." + "@@" + "objs." + i + ".base"); if (t == null) e.push(n + ": enter a target number." + "@@" + "objs." + i + ".target");
+    if (b != null && t != null && t === b) e.push(n + ": the target is the same as the baseline." + "@@" + "objs." + i + ".target");
   });
   return e;
 }
@@ -511,11 +511,11 @@ function refreshBudget() {
 }
 function vPlan() {
   var e = [], on = S.plan.strats.filter(function (s) { return s.on; });
-  if (on.length < 2) e.push("Choose at least 2 strategies.");
+  if (on.length < 2) e.push("Choose at least 2 strategies." + "@@" + "plan.strats");
   on.forEach(function (s) {
-    if (words(s.mine) < 20) e.push(s.name + ": explain why and how in at least 20 words.");
-    if (!Object.keys(s.links || {}).some(function (k) { return s.links[k]; })) e.push(s.name + ": tick the objectives it supports.");
-    if (!Object.keys(s.segl || {}).some(function (k) { return s.segl[k]; })) e.push(s.name + ": tick the target segments it reaches.");
+    if (words(s.mine) < 20) e.push(s.name + ": explain why and how in at least 20 words." + "@@" + "plan.strats." + S.plan.strats.indexOf(s) + ".mine");
+    if (!Object.keys(s.links || {}).some(function (k) { return s.links[k]; })) e.push(s.name + ": tick the objectives it supports." + "@@" + "plan.strats." + S.plan.strats.indexOf(s) + ".links");
+    if (!Object.keys(s.segl || {}).some(function (k) { return s.segl[k]; })) e.push(s.name + ": tick the target segments it reaches." + "@@" + "plan.strats." + S.plan.strats.indexOf(s) + ".segl");
   });
   return e;
 }
@@ -549,9 +549,9 @@ function vCtl() {
   ensureCtl(); var e = [];
   S.objs.forEach(function (o, i) {
     var n = "Objective " + (i + 1);
-    if (!String(o.tool).trim()) e.push(n + ": say where you will get the numbers.");
-    for (var k = 0; k < 3; k++) if (SA.num(o.q[k]) == null) e.push(n + ": enter the Q" + (k + 1) + " step as a number.");
-    if (!Object.keys(o.acts || {}).some(function (k) { return o.acts[k]; })) e.push(n + ": pick at least one thing you will do if you fall behind.");
+    if (!String(o.tool).trim()) e.push(n + ": say where you will get the numbers." + "@@" + "objs." + i + ".tool");
+    for (var k = 0; k < 3; k++) if (SA.num(o.q[k]) == null) e.push(n + ": enter the Q" + (k + 1) + " step as a number." + "@@" + "objs." + i + ".q." + k);
+    if (!Object.keys(o.acts || {}).some(function (k) { return o.acts[k]; })) e.push(n + ": pick at least one thing you will do if you fall behind." + "@@" + "objs." + i + ".acts");
   });
   return e.filter(function (x, i, a) { return a.indexOf(x) === i; });
 }
@@ -586,7 +586,19 @@ function render(keepScroll) {
   save();
 }
 function go(n) { S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
-function showErr(e) { $("saErr").innerHTML = e.slice(0, 8).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + (e.length > 8 ? "<li>And " + (e.length - 8) + " more.</li>" : ""); }
+function showErr(e) {
+  $("saErr").innerHTML = (e.length > 1 ? '<li class="sa-err-h">Tap an item to jump to it.</li>' : "") + e.slice(0, 10).map(function (x) { var p = String(x).split("@@"); return p[1] ? '<li><button type="button" class="sa-errgo" data-go="' + esc(p[1]) + '">' + esc(p[0]) + "</button></li>" : "<li>" + esc(p[0]) + "</li>"; }).join("") + (e.length > 10 ? "<li>And " + (e.length - 10) + " more.</li>" : "");
+}
+function jumpTo(path) {
+  var el = path.indexOf("shot:") === 0 ? document.querySelector('[data-shot="' + path.slice(5) + '"]') : null, cs = function (s) { return s.replace(/"/g, '\\"'); };
+  if (!el) el = document.querySelector('[data-p="' + cs(path) + '"],[data-tg="' + cs(path) + '"]') || document.querySelector('[data-p^="' + cs(path) + '."],[data-tg^="' + cs(path) + '."]');
+  if (!el) return;
+  var box = el.closest(".sa-post,.sa-ln,.sa-yn,fieldset,.f,.sa-obj,.sa-st,.sa-card") || el;
+  var det = el.closest("details"); if (det && !det.open) det.open = true;
+  box.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+  box.classList.remove("sa-flash"); void box.offsetWidth; box.classList.add("sa-flash");
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) setTimeout(function () { try { el.focus({ preventScroll: true }); } catch (x) {} }, 350);
+}
 $("saNext").addEventListener("click", function () {
   var e = VALID[S.step](); if (e.length) { showErr(e); return; }
   if (S.step === 5) { S.plan = null; S.model = null; }
@@ -597,6 +609,7 @@ $("saPrev").addEventListener("click", function () { go(S.step - 1); });
 /* generic input handling */
 document.addEventListener("click", function (ev) {
   var t = ev.target.closest("button"); if (!t) return;
+  if (t.dataset.go) { jumpTo(t.dataset.go); return; }
   if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; S.plan = null; render(true); return; }
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
