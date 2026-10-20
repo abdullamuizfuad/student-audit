@@ -599,7 +599,7 @@ function shot(inp) {
 }
 
 /* PDF and the copy for the lecturer */
-var COPY_URL = window.SA_COPY_URL || ""; /* set to the Apps Script /exec URL from tools/student-audit-apps-script.gs */
+var COPY_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzrema9oj9MljhtxAFO8nFDtAqJJYRHXdmcVsfn1-qaKEbAdSPTD8KAX8FX5Ky1tCma/exec";
 function sha(str) {
   if (!window.crypto || !crypto.subtle) return Promise.resolve("");
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join(""); }, function () { return ""; });
