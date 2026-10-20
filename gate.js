@@ -4,7 +4,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var n = $("gName"), id = $("gId"), mail = $("gMail"), mt = $("gMailTxt"), go = $("gGo"), err = $("gErr");
   var KEY = "ia-student";
-  var CHECK_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzrema9oj9MljhtxAFO8nFDtAqJJYRHXdmcVsfn1-qaKEbAdSPTD8KAX8FX5Ky1tCma/exec";
+  var CHECK_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzpXGVOhzHwtc9kz0xs4XgmtL-ZMFoI0oJwjf0a5Gv8GdDmCTe8xqatUFhcKrQOyMkaYQ/exec";
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   try { var s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && s.sid) { n.value = s.name || ""; id.value = String(s.sid).slice(1); } } catch (e) {}
   function check() {
