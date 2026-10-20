@@ -1,9 +1,10 @@
-/* Student Audit landing page: name and MNU student ID, then into the tool. Nothing is sent. */
+/* Student Audit landing page: name and MNU student ID, checked against the class list in the lecturer's Google Sheet (only the ID is sent). */
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var n = $("gName"), id = $("gId"), mail = $("gMail"), mt = $("gMailTxt"), go = $("gGo"), err = $("gErr");
   var KEY = "ia-student";
+  var CHECK_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzrema9oj9MljhtxAFO8nFDtAqJJYRHXdmcVsfn1-qaKEbAdSPTD8KAX8FX5Ky1tCma/exec";
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   try { var s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && s.sid) { n.value = s.name || ""; id.value = String(s.sid).slice(1); } } catch (e) {}
   function check() {
@@ -19,11 +20,22 @@
   $("gate").addEventListener("submit", function (ev) {
     ev.preventDefault();
     if (!check()) { err.textContent = n.value.trim().length < 3 ? "Enter your full name." : "Enter the 6 numbers of your student ID."; return; }
-    var sid = "S" + id.value, rec = { name: n.value.trim().replace(/\s+/g, " "), sid: sid, email: sid.toLowerCase() + "@student.mnu.edu.mv", at: new Date().toISOString() };
-    try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
-    try { sessionStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
-    go.disabled = true; go.textContent = "Opening the tool...";
-    location.href = "tool.html";
+    var sid = "S" + id.value;
+    go.disabled = true; go.textContent = "Checking the class list..."; err.textContent = "";
+    var done = function (msg) { go.textContent = "Verify and start"; check(); err.textContent = msg; };
+    var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
+    fetch(CHECK_URL + "?action=check&sid=" + encodeURIComponent(sid), ctl ? { signal: ctl.signal } : {})
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        clearTimeout(tm);
+        if (!res || !res.ok) { done(res && res.reason === "not-listed" ? "This ID is not on the class list. Check the number, or ask your lecturer to add you." : "That ID could not be verified. Check the number."); return; }
+        var rec = { name: (res.name || n.value.trim()).replace(/\s+/g, " "), sid: sid, email: sid.toLowerCase() + "@student.mnu.edu.mv", verified: !res.open, at: new Date().toISOString() };
+        try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
+        try { sessionStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
+        go.textContent = res.name ? "Welcome, " + res.name.split(" ")[0] + ". Opening the tool..." : "Verified. Opening the tool...";
+        setTimeout(function () { location.href = "tool.html"; }, 500);
+      })
+      .catch(function () { clearTimeout(tm); done("The class list could not be reached. Check your internet and try again."); });
   });
   check();
   $("saTheme").addEventListener("click", function () {

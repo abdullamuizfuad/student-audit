@@ -13,6 +13,12 @@
  * 4. Deploy > New deployment > type "Web app". Execute as: Me. Who has access: Anyone. Deploy, then copy the Web app URL (it ends in /exec).
  * 5. Send that URL to Claude (it is not a secret) and it goes into the tool. Or put it in ui.js where it says COPY_URL.
  *
+ * Class list (Roster tab):
+ * - The "Roster" tab holds the student IDs allowed into the tool: IDs in column A (for example S083354), names in column B (optional).
+ * - When a student presses Verify on the landing page, the page asks this script whether the ID is on the list. The list itself never leaves your sheet.
+ * - New semester: delete the old rows and paste the new cohort. No website change is needed.
+ * - While the Roster tab is empty, every correctly formatted ID is let in.
+ *
  * Updating later: paste the new file over the old one, then Deploy > Manage deployments > pencil > Version "New version" > Deploy.
  * Never choose "New deployment" again: that makes a new URL.
  *
@@ -20,14 +26,46 @@
  */
 const NOTIFY_TO = "";                 // blank = the owner of this script
 const SHEET_NAME = "Submissions";
+const ROSTER_NAME = "Roster";
 const FOLDER_NAME = "MKT303 student audits";
 const DAILY_CAP = 200;                // emails a day, well under Google's limit
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
 
 function setup() {
   folder_();
+  roster_();
   const sh = sheet_();
   Logger.log("Ready. Sheet tab: " + sh.getName() + ". Drive folder: " + FOLDER_NAME);
+}
+
+/* Verify: GET ?action=check&sid=S083354 answers {ok, name} without revealing the list. */
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.action !== "check") return out_({ ok: false });
+  const sid = String(p.sid || "").trim().toUpperCase();
+  if (!/^S0\d{5}$/.test(sid)) return out_({ ok: false, reason: "format" });
+  const r = lookup_(sid);
+  return out_(r.empty ? { ok: true, open: true } : r.found ? { ok: true, name: r.name } : { ok: false, reason: "not-listed" });
+}
+
+function lookup_(sid) {
+  const rows = roster_().getDataRange().getValues().slice(1).filter(r => String(r[0] || "").trim());
+  if (!rows.length) return { empty: true };
+  for (const r of rows) {
+    if (String(r[0]).trim().toUpperCase() === sid) return { found: true, name: String(r[1] || "").trim() };
+  }
+  return { found: false };
+}
+
+function roster_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(ROSTER_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(ROSTER_NAME);
+    sh.appendRow(["student id", "name (optional)"]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
 }
 
 function doPost(e) {
@@ -45,13 +83,15 @@ function doPost(e) {
     const blob = Utilities.newBlob(bytes, "application/pdf", name);
     const file = folder_().createFile(blob);
 
+    const r = lookup_(String(d.sid || "").toUpperCase());
+    const listed = r.empty ? "list empty" : r.found ? "yes" : "NOT ON LIST";
     const sh = sheet_();
-    sh.appendRow([new Date(), d.student, d.sid, d.business, d.type, d.score, d.pages, d.code, file.getUrl()]);
+    sh.appendRow([new Date(), d.student, d.sid, d.business, d.type, d.score, d.pages, d.code, file.getUrl(), listed]);
 
     if (n < DAILY_CAP) {
       props.setProperty("day_" + today, String(n + 1));
       const to = NOTIFY_TO || Session.getEffectiveUser().getEmail();
-      GmailApp.sendEmail(to, "MKT303 audit: " + d.student + " (" + d.sid + "), " + d.business + ", code " + d.code, "Open this email in a mail app that shows HTML.", {
+      GmailApp.sendEmail(to, (listed === "NOT ON LIST" ? "[NOT ON CLASS LIST] " : "") + "MKT303 audit: " + d.student + " (" + d.sid + "), " + d.business + ", code " + d.code, "Open this email in a mail app that shows HTML.", {
         name: "Student Audit tool",
         htmlBody: body_(d, file.getUrl()),
         attachments: [blob, Utilities.newBlob(d.answers || "{}", "application/json", "answers_" + d.code + ".json")]
@@ -92,7 +132,7 @@ function sheet_() {
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(["received", "student", "student id", "business", "type", "score", "pages", "code", "pdf in drive"]);
+    sh.appendRow(["received", "student", "student id", "business", "type", "score", "pages", "code", "pdf in drive", "on class list"]);
     sh.setFrozenRows(1);
   }
   return sh;
