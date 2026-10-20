@@ -424,13 +424,32 @@ function modelStuff() {
   if (!S.model) { var A = SA.audit(S), mo = SA.makeObjectives(A, S), mp = SA.makeStrategies(A, S, mo); S.model = { objs: mo, plan: JSON.parse(JSON.stringify(mp)) }; }
   return S.model;
 }
+function specific(o) { var w = String(o.text || "").toLowerCase().match(/[a-z]+/g) || [], uniq = {}; w.forEach(function (x) { uniq[x] = 1; }); return w.length >= 8 && Object.keys(uniq).length >= 6 && /\d/.test(o.text || ""); }
 function smart(o) {
   var b = SA.num(o.base), t = SA.num(o.target), ok = function (x) { return x ? "ok" : "no"; };
   var chg = b != null && t != null && b !== 0 ? Math.round((t - b) / Math.abs(b) * 100) : null;
-  var m = String(o.kpi || "").trim() && b != null && t != null, a = chg == null ? false : chg > 0 && chg <= 300;
-  var h = '<span class="sa-sm ' + ok(words(o.text) >= 8) + '">Specific</span><span class="sa-sm ' + ok(m) + '">Measurable</span><span class="sa-sm ' + ok(a) + '">Achievable</span><span class="sa-sm ok">Time-bound: month ' + (+o.deadline || 12) + "</span>";
-  var note = chg == null ? "Enter a baseline and a target to see the change." : "Change from baseline to target: " + (chg > 0 ? "+" : "") + chg + "%." + (chg > 300 ? " That is a very big jump. Be ready to defend it with evidence." : chg <= 0 ? " The target should be better than the baseline." : "");
-  return h + '<p class="sa-ms">' + note + "</p>";
+  var m = String(o.kpi || "").trim() && b != null && t != null;
+  var h = '<span class="sa-sm ' + ok(specific(o)) + '">Specific</span><span class="sa-sm ' + ok(m) + '">Measurable</span><span class="sa-sm ' + ok(b != null && t != null && t !== b) + '">Achievable</span><span class="sa-sm ok">Time-bound: month ' + (+o.deadline || 12) + "</span>";
+  var notes = [];
+  if (!specific(o) && String(o.text || "").trim()) notes.push("To be specific, the sentence needs the channel, the numbers and the time, for example \"from 200 to 2,000 by month 12\".");
+  if (chg == null) notes.push("Enter a baseline and a target to see the change.");
+  else {
+    notes.push("Change from baseline to target: " + (chg > 0 ? "+" : "") + chg.toLocaleString("en-US") + "%.");
+    if (chg > 300) notes.push("A big jump. That can be realistic from a small starting point, for example with paid ads, so explain in your report how the strategies will get there.");
+    if (chg < 0) notes.push("The target is lower than the baseline. That is fine when less is better, for example response time or cost per booking.");
+  }
+  return h + '<p class="sa-ms">' + notes.join(" ") + "</p>";
+}
+function objGuide() {
+  return '<details class="sa-hints"><summary>How to write a SMART objective</summary>' +
+    '<p class="sa-ms"><b>Use this pattern:</b> <i>Increase / Grow / Reduce</i> + <i>what you measure</i> + <i>on which channel</i> + <i>from the baseline to the target</i> + <i>by when</i> + <i>through which strategy</i>.</p>' +
+    '<ul class="sa-hl"><li><b>Specific:</b> one result, one channel, one segment if you can. Not "grow online presence".</li>' +
+    '<li><b>Measurable:</b> a number you can check, with a baseline from your audit or the business\'s own records.</li>' +
+    '<li><b>Achievable:</b> possible with the budget and strategies you plan. Big jumps are fine from a small start, but say how.</li>' +
+    '<li><b>Relevant:</b> it fixes a gap your audit found and helps the business sell more.</li>' +
+    '<li><b>Time-bound:</b> a month in the 12-month plan.</li></ul>' +
+    '<p class="sa-ms"><b>Weak:</b> "Grow Instagram followers."<br><b>Strong:</b> "Grow Instagram followers from 200 to 2,000 by month 12 through weekly Reels and a monthly paid ad aimed at local families."</p>' +
+    '<p class="sa-ms"><b>Tip:</b> mix objective types. One for awareness (followers, reach), one for engagement (engagement rate, messages) and one for sales (bookings, orders, website enquiries).</p></details>';
 }
 function objCard(o, i) {
   var cap = "objs." + i;
@@ -454,13 +473,14 @@ function viewObj() {
   ensureObjs(); var i = curIdx(7), o = S.objs[i];
   var h = '<h1 class="sa-h">Objective ' + (i + 1) + " of " + S.objs.length + "</h1>";
   if (i === 0) h += '<p class="sa-lede">The assignment needs at least three SMART objectives. Write them yourself, one per page. The tool checks the numbers and shows what is missing.</p>';
-  return h + hintsHtml() + '<div id="saObjs">' + objCard(o, i) + "</div>";
+  return h + objGuide() + hintsHtml() + '<div id="saObjs">' + objCard(o, i) + "</div>";
 }
 function vObj() {
   ensureObjs(); var e = [];
   S.objs.forEach(function (o, i) {
     var n = "Objective " + (i + 1);
     if (words(o.text) < 8) e.push(n + ": write it out in at least 8 words.@@objs." + i + ".text");
+    else if (!specific(o)) e.push(n + ": make it specific: include the numbers and the time in the sentence.@@objs." + i + ".text");
     if (!String(o.kpi).trim()) e.push(n + ": name the KPI.@@objs." + i + ".kpi");
     var b = SA.num(o.base), t = SA.num(o.target);
     if (b == null) e.push(n + ": enter a baseline number.@@objs." + i + ".base"); if (t == null) e.push(n + ": enter a target number.@@objs." + i + ".target");
