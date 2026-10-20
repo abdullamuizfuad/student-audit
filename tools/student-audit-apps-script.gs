@@ -15,7 +15,9 @@
  *
  * Class list (Roster tab):
  * - Any tab with "Roster" in its name holds the student IDs allowed in (for example "Class Roster 2025 T2"):
- *   IDs in column A (for example S083354), names in column B (optional). A header row is fine but not needed.
+ *   IDs in column A (for example S083354), names in column B (optional), email in column C (optional).
+ *   The student's copy goes to the email in column C if there is one, otherwise to s0xxxxx@student.mnu.edu.mv.
+ *   A header row is fine but not needed.
  * - To close access for an old cohort, rename its tab so it no longer says Roster (for example "Archive 2025 T2"), or delete it.
  * - When a student presses Verify on the landing page, the page asks this script whether the ID is on the list. The list itself never leaves your sheet.
  * - New semester: delete the old rows and paste the new cohort. No website change is needed.
@@ -55,7 +57,7 @@ function lookup_(sid) {
   rosters_().forEach(sh => { rows = rows.concat(sh.getDataRange().getValues().filter(r => /^S0\d{5}$/i.test(String(r[0] || "").trim()))); });
   if (!rows.length) return { empty: true };
   for (const r of rows) {
-    if (String(r[0]).trim().toUpperCase() === sid) return { found: true, name: String(r[1] || "").trim() };
+    if (String(r[0]).trim().toUpperCase() === sid) return { found: true, name: String(r[1] || "").trim(), email: String(r[2] || "").trim() };
   }
   return { found: false };
 }
@@ -98,6 +100,14 @@ function doPost(e) {
     if (n < DAILY_CAP) {
       props.setProperty("day_" + today, String(n + 1));
       const to = NOTIFY_TO || Session.getEffectiveUser().getEmail();
+      const studentTo = (r.email && /@/.test(r.email)) ? r.email : (/^S0\d{5}$/i.test(String(d.sid || "")) ? String(d.sid).toLowerCase() + "@student.mnu.edu.mv" : "");
+      if (studentTo) {
+        GmailApp.sendEmail(studentTo, "Your MKT303 audit report: " + d.business + " (code " + d.code + ")",
+          "Dear " + d.student + ",\n\nYour Digital Presence Audit report for " + d.business + " is attached (" + d.pages + " pages, submission code " + d.code + ").\n\n" +
+          "Keep this email as your backup copy. A copy has also gone to your lecturer. If you make the report again, the code changes, so submit the version you want marked.\n\n" +
+          "Use the PDF as evidence and as the map for your report: the explanations, theory and references must be your own work.\n\nIslandeative Student Audit", {
+          name: "Islandeative Student Audit", attachments: [blob] });
+      }
       GmailApp.sendEmail(to, (listed === "NOT ON LIST" ? "[NOT ON CLASS LIST] " : "") + "MKT303 audit: " + d.student + " (" + d.sid + "), " + d.business + ", code " + d.code, "Open this email in a mail app that shows HTML.", {
         name: "Student Audit tool",
         htmlBody: body_(d, file.getUrl()),

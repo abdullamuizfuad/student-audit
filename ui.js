@@ -681,7 +681,7 @@ function makeIt() {
     return window.SA_PDF(S2, IMG).then(function (res) {
       msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Sending the copy to your lecturer...";
       return sendCopy(res, code, A).then(function (st) {
-        msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. " + (st === "sent" ? "A copy was sent to your lecturer. Submission code " + code + "." : "The copy to your lecturer could not be sent. Email the PDF to your lecturer yourself. Submission code " + code + ".");
+        msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. " + (st === "sent" ? "A copy was sent to your lecturer and to your student email (check Junk if you do not see it). Submission code " + code + "." : "The copy to your lecturer could not be sent. Email the PDF to your lecturer yourself. Submission code " + code + ".");
       });
     });
   }).catch(function (e) { msg.textContent = "The PDF could not be made: " + (e && e.message ? e.message : e); if (window.console) console.warn(e); });
