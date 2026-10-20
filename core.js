@@ -669,6 +669,81 @@ function posText(st) {
   return "For " + d(f["for"]) + " who " + d(f.need) + ", " + (st.biz.name || "the business") + " is the " + d(f.cat) + " that " + d(f.benefit) + ". Unlike " + d(f.comp) + ", we " + d(f.diff) + ", because " + d(f.proof) + ".";
 }
 function posXY(r) { return r === "lo" ? 22 : r === "hi" ? 78 : 50; }
+
+/* ---------- strategy activities (plain language). basis: Price list = Islandeative price list, At cost = paid straight to the platform or person, Market 2026 = a rough 2026 market estimate, Own time = no cash cost ---------- */
+var STRAT_DESC = {
+  web: "Your own website or blog: the place people check, book or order.",
+  seo: "Being found on Google and Google Maps when people search.",
+  content: "Regular posts, Reels and stories that keep people interested.",
+  smads: "Paid ads on Facebook, Instagram or TikTok aimed at your segment.",
+  banner: "Paid Google search and display ads.",
+  email: "Messages to people who already know the business: email, SMS, WhatsApp, Viber.",
+  infl: "Working with creators your segment already follows.",
+  viral: "Giveaways, challenges and shareable posts that spread by word of mouth.",
+  affil: "Partners who send you customers for a commission."
+};
+var FITS = ["My segment looks online before buying", "The audit found a gap here", "Low cost for a small business", "Builds trust and reviews", "Reaches new customers", "Brings past customers back", "Strong in the peak season", "Shows the product or place well"];
+var FREQ = { once: "Once", month: "Every month", quarter: "Every 3 months", peak: "Peak season only (Nov to Apr)" };
+var ACTS_BY = {
+  web: [
+    { id: "build", n: "Build a new mobile-friendly website", basis: "Market 2026", unit: 12000, f: ["once"], only: "nosite" },
+    { id: "redo", n: "Redesign the existing website", basis: "Market 2026", unit: 8000, f: ["once"], only: "site" },
+    { id: "host", n: "Domain and hosting", basis: "Market 2026", unit: 200, f: ["month"] },
+    { id: "bookpage", n: "Booking or enquiry page", basis: "Price list", unit: 3500, f: ["once"] },
+    { id: "blog", n: "Blog posts", basis: "Market 2026", unit: 400, f: ["month", "quarter"], count: [1, 2, 4] },
+    { id: "otakit", n: "Booking platform kit (Booking.com and Agoda listings)", basis: "Price list", unit: 2500, f: ["once"], only: "travel" },
+    { id: "menu", n: "Menu design", basis: "Price list", unit: 1500, f: ["once"], only: "food" }],
+  seo: [
+    { id: "onpage", n: "Fix page titles, descriptions and headings", basis: "Market 2026", unit: 3000, f: ["once"] },
+    { id: "gbp", n: "Optimise the Google Business Profile", basis: "Price list", unit: 800, f: ["once"] },
+    { id: "dirs", n: "List the business on local directories and maps", basis: "Market 2026", unit: 500, f: ["once"] },
+    { id: "reviews", n: "Ask customers for Google reviews and reply to every review", basis: "Own time", unit: 0, f: ["month"] },
+    { id: "tool", n: "SEO tool subscription", basis: "At cost", unit: 250, f: ["month"] }],
+  content: [
+    { id: "reelnew", n: "Reels with new filming", basis: "Price list", unit: 1000, f: ["month", "quarter", "peak"], count: [1, 2, 4, 8], disc: true },
+    { id: "reelold", n: "Reels from existing footage", basis: "Price list", unit: 500, f: ["month", "quarter", "peak"], count: [1, 2, 4, 8], disc: true },
+    { id: "post", n: "Static or carousel posts", basis: "Price list", unit: 250, f: ["month", "quarter", "peak"], count: [2, 4, 8, 12], disc: true },
+    { id: "story", n: "Story sets", basis: "Price list", unit: 150, f: ["month", "quarter", "peak"], count: [2, 4, 8], disc: true },
+    { id: "shoot", n: "Half-day photo and video shoot", basis: "Price list", unit: 2500, f: ["once", "quarter"] },
+    { id: "canva", n: "Design tool (Canva Pro)", basis: "At cost", unit: 230, f: ["month"] }],
+  smads: [
+    { id: "meta", n: "Ad spend on Facebook and Instagram", basis: "At cost", unit: 2000, f: ["month", "peak"], amt: [1000, 2000, 3000, 5000], season: true },
+    { id: "tiktok", n: "Ad spend on TikTok", basis: "At cost", unit: 1000, f: ["month", "peak"], amt: [500, 1000, 2000, 3000], season: true },
+    { id: "plat", n: "Set up and run one extra platform", basis: "Price list", unit: 1000, f: ["month"] }],
+  banner: [
+    { id: "gmgmt", n: "Google Ads management", basis: "Price list", unit: 1500, f: ["month", "peak"] },
+    { id: "gspend", n: "Google search and display ad spend", basis: "At cost", unit: 2000, f: ["month", "peak"], amt: [1000, 2000, 3000, 5000], season: true }],
+  email: [
+    { id: "setup", n: "Broadcast set-up with custom templates", basis: "Price list", unit: 2500, f: ["once"] },
+    { id: "send", n: "Broadcast sends (email, SMS, WhatsApp, Viber)", basis: "Price list", unit: 150, f: ["month", "quarter", "peak"], count: [1, 2, 4] },
+    { id: "bundle", n: "Campaign month bundle (all content and sends for one campaign)", basis: "Price list", unit: 2500, f: ["quarter", "peak"] },
+    { id: "platform", n: "Email or SMS platform subscription", basis: "Market 2026", unit: 300, f: ["month"] }],
+  infl: [
+    { id: "camp", n: "Influencer campaign management", basis: "Price list", unit: 2000, f: ["once", "quarter"] },
+    { id: "fee", n: "Influencer fee (micro-influencer)", basis: "Market 2026", unit: 3000, f: ["once", "quarter"] },
+    { id: "pr", n: "PR submission to media", basis: "Price list", unit: 600, f: ["once", "quarter"] }],
+  viral: [
+    { id: "prize", n: "Giveaway or challenge prizes", basis: "Market 2026", unit: 1500, f: ["once", "quarter", "peak"] },
+    { id: "reel", n: "Reel made for the campaign", basis: "Price list", unit: 1000, f: ["once", "quarter", "peak"], count: [1, 2, 4] },
+    { id: "ugc", n: "Repost customer photos and videos", basis: "Own time", unit: 0, f: ["month"] }],
+  affil: [
+    { id: "links", n: "Partner tracking links and set-up", basis: "Market 2026", unit: 1500, f: ["once"] },
+    { id: "comm", n: "Commission paid to partners", basis: "Market 2026", unit: 1000, f: ["month", "peak"] }]
+};
+function actsFor(sid, st) {
+  var T = TBY[(st.biz || {}).type] || TBY.service, has = (st.site || {}).has === "yes";
+  return (ACTS_BY[sid] || []).filter(function (a) {
+    if (a.only === "nosite") return !has; if (a.only === "site") return has;
+    if (a.only === "travel") return !!T.travel; if (a.only === "food") return T.group === "food"; return true;
+  }).map(function (a) { var b = JSON.parse(JSON.stringify(a)); if (!T.season) b.f = b.f.filter(function (x) { return x !== "peak"; }); if (!b.f.length) b.f = ["month"]; return b; });
+}
+function lineActive(l, m) {
+  if (m < l.start || m > l.end) return false;
+  if (l.kind === "oneoff") return m === l.start;
+  if (l.kind === "every") return (m - l.start) % (num(l.every) || 3) === 0;
+  if (l.kind === "months") return (l.months || []).indexOf(m) >= 0;
+  return true;
+}
 var WRITE_GUIDE = [
   ["Executive summary and introduction", 500, "Write last. Say the business, the period, the three objectives, the strategies and the total budget."],
   ["Situational analysis", 2200, "Company, SWOT, PESTEL, competitors and market. Use the audit results and screenshots as your evidence for the website, social media and past promotions."],
@@ -681,7 +756,7 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -251,3 +251,26 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}
 .sa-subn.done{color:var(--ink);border-color:color-mix(in srgb,var(--green) 60%,transparent)}
 .sa-subn:disabled{cursor:default;opacity:.5}
 @media(max-width:640px){.sa-nav-r{flex:2}.sa-nav-r .btn{flex:1;padding-inline:12px}}
+/* strategy planner */
+.sa-pickcard{display:flex;flex-direction:column;gap:4px;width:100%;text-align:start;padding:16px 18px;margin:0 0 10px;border:1.5px solid var(--line);border-radius:18px;background:var(--raised);color:var(--ink);font:inherit;cursor:pointer;position:relative}
+.sa-pickcard .nm{font-weight:800;font-size:1.05rem;padding-inline-end:34px}
+.sa-pickcard .ds{color:var(--muted);font-size:.92rem}
+.sa-pickcard .rc{margin-top:4px;font-size:.82rem;font-weight:600;color:var(--blue);background:color-mix(in srgb,var(--teal) 12%,transparent);border-radius:10px;padding:6px 10px}
+[data-theme="dark"] .sa-pickcard .rc{color:var(--teal)}
+.sa-pickcard::after{content:"";position:absolute;top:16px;inset-inline-end:16px;width:22px;height:22px;border-radius:50%;border:2px solid var(--line)}
+.sa-pickcard[aria-pressed=true]{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 22%,transparent)}
+.sa-pickcard[aria-pressed=true]::after{background:var(--teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z' fill='%23fff'/%3E%3C/svg%3E") center/16px no-repeat;border-color:var(--teal)}
+.sa-act{border:1.5px solid var(--line);border-radius:16px;margin:0 0 10px;overflow:hidden}
+.sa-act.on{border-color:var(--teal)}
+.sa-acttg{display:flex;flex-direction:column;gap:2px;width:100%;text-align:start;padding:12px 14px 12px 46px;border:0;background:transparent;color:var(--ink);font:inherit;cursor:pointer;position:relative}
+.sa-acttg::before{content:"";position:absolute;left:14px;top:14px;width:20px;height:20px;border-radius:6px;border:2px solid var(--line)}
+.sa-acttg[aria-pressed=true]::before{background:var(--teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z' fill='%23fff'/%3E%3C/svg%3E") center/14px no-repeat;border-color:var(--teal)}
+.sa-acttg .nm{font-weight:700}
+.sa-acttg .pr{font-size:.85rem;color:var(--muted)}
+.sa-acttg .bs{font-style:normal;font-size:.74rem;font-weight:700;margin-inline-start:6px;padding:.1em .55em;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+.sa-actb{padding:2px 14px 12px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--teal) 5%,transparent)}
+.sa-start{max-width:220px;margin-top:10px}
+.sa-start select{width:100%;font:inherit;padding:.55em .8em;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.sa-subtot{margin:16px 0 8px;font-size:1rem}
+.sa-hints{margin:0 0 16px;border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:var(--surface)}
+.sa-hints summary{cursor:pointer;font-weight:700}

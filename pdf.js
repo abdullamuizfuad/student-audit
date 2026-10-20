@@ -231,7 +231,7 @@ function build(S, IMG, fonts, logo, dims) {
   S.plan.strats.filter(function (s) { return s.on; }).forEach(function (s) {
     var ls = S.plan.lines.filter(function (l) { return l.s === s.id; }), col = SCOL[s.id] || ACC, st = B.byS[s.id];
     room(40); fill(col); doc.roundedRect(M, y - 4.6, CW, 7.4, 2, 2, "F"); F("ax", 11, WHITE); tx(s.name, M + 4, y + 0.3); F("fb", 8.5, WHITE); tx("MVR " + f0(st ? st.total : 0) + " over 12 months", M + CW - 4, y + 0.3, { align: "right" }); y += 8;
-    para(s.mine || "", { size: 9, gap: 1.5 });
+    para("Why it fits: " + (SA.chosen(s.fits).join(", ") || "-") + "." + (s.note ? " " + String(s.note).trim().replace(/([^.!?])$/, "$1.") : ""), { size: 9, gap: 1.5 });
     var serves = []; S.objs.forEach(function (o, i) { if ((s.links || {})[o.id]) serves.push("Objective " + (i + 1)); }); if (serves.length) para("Supports: " + serves.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
     var reach = []; (TM.segs || []).forEach(function (g) { if ((s.segl || {})[g.id]) reach.push(g.name); }); if (reach.length) para("Reaches: " + reach.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
     ls.forEach(function (l) {
@@ -260,7 +260,7 @@ function build(S, IMG, fonts, logo, dims) {
       F("fr", 7.2, INK); var nm = split(l.name, LW - 3)[0]; tx(nm + (split(l.name, LW - 3).length > 1 ? "..." : ""), M + 3, y);
       stroke(LINE); doc.setLineWidth(0.1); doc.line(M, y + 1.6, M + CW, y + 1.6);
       fill(tint(col, 0.82)); doc.roundedRect(M + LW + CWm * (l.start - 1) + 0.3, y - 2.7, CWm * (l.end - l.start + 1) - 0.6, 3.6, 1, 1, "F");
-      lab.forEach(function (m, i) { if (SA.lineCost(l, i + 1, T.season, m.cal) > 0 || (l.kind === "monthly" && i + 1 >= l.start && i + 1 <= l.end) || (l.kind === "months" && (l.months || []).indexOf(i + 1) >= 0) || (l.kind === "oneoff" && i + 1 === l.start)) { if (i + 1 >= l.start && i + 1 <= l.end) { fill(col); doc.roundedRect(M + LW + CWm * i + 0.6, y - 2.4, CWm - 1.2, 3, 0.8, 0.8, "F"); } } });
+      lab.forEach(function (m, i) { if (SA.lineActive(l, i + 1)) { fill(col); doc.roundedRect(M + LW + CWm * i + 0.6, y - 2.4, CWm - 1.2, 3, 0.8, 0.8, "F"); } });
       y += rowH;
     });
     y += 1;
@@ -270,7 +270,7 @@ function build(S, IMG, fonts, logo, dims) {
   /* budget */
   doc.addPage(); y = TOP;
   head("7. Budget", "Costs in Maldivian rufiyaa (MVR) for the 12 months from " + lab[0].label + " to " + lab[11].label + ".");
-  var basisTxt = { "Price list": "Islandeative price list", "At cost": "Paid at cost, no mark-up", "Estimate": "Estimate: get quotes" };
+  var basisTxt = { "Price list": "Islandeative price list", "At cost": "Paid at cost, no mark-up", "Estimate": "Estimate: get quotes", "Market 2026": "2026 market estimate", "Own time": "No cash cost" };
   S.plan.strats.filter(function (s) { return s.on; }).forEach(function (s) {
     var rs = B.rows.filter(function (r) { return r.line.s === s.id; }); if (!rs.length) return;
     h3(s.name, SCOL[s.id] || ACC);
@@ -295,7 +295,7 @@ function build(S, IMG, fonts, logo, dims) {
     "Price list items use Islandeative's published prices for the task (MVR). Where 4 or more of one monthly item are bought, 15% is taken off, as on the price list.",
     "Ad spend and fees paid to creators are 'at cost' and go straight to the platform or person with no mark-up.",
     T.season ? "Ad spend is weighted to the tourism peak season: 40% higher in November to April and 40% lower in May to October, so the year averages out." : "Ad spend is spread evenly across the months.",
-    "Website build, SEO set-up, hosting, partner commission and prizes are estimates, because they are not on the price list. The student must replace them with written quotes and attach the quotes to the report as supporting documents.",
+    "Items marked '2026 market estimate' (for example website build, hosting, SEO set-up, influencer fees, prizes and commission) are rough Maldives market figures for 2026, not quotes. Where the student entered a real quote, that figure is used. Quotes should be attached to the report as supporting documents.",
     "Contingency is " + B.cp + "% of the total and covers price changes and unplanned work."
   ], { size: 8.8 });
 
