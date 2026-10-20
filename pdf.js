@@ -177,7 +177,7 @@ function build(S, IMG, fonts, logo, dims) {
   head("1. Target market", "Bases of segmentation used: " + (uk(TM.bases).map(function (k) { return BL[k]; }).join(", ") || "none") + ". Each segment is rated on size, reach online, fit with the business and competition (1 to 3 points each, 12 in total).");
   table([{ w: 32, h: "Segment" }, { w: 66, h: "Profile (from the student's picks)" }, { w: 50, h: "Size, reach, fit, competition" }, { w: 26, h: "Score / decision" }],
     TM.segs.map(function (g) { var at = g.att || {}; return [{ t: g.name, b: true }, SA.segText(g, S.biz.type), SA.ATT.map(function (x) { return at[x.k] !== undefined && at[x.k] !== "" ? x.o[+at[x.k]] : "-"; }).join("; "), { t: SA.segScore(g) + "/12\n" + (g.target === "yes" ? "Target" : "Not a target"), b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 7.8 });
-  TM.segs.forEach(function (g) { para((g.target === "yes" ? "Why " : "Why not ") + g.name + ": " + String(g.why || "").trim().replace(/([^.!?])$/, "$1.") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
+  TM.segs.forEach(function (g) { para(g.name + ". " + SA.segReason(g) + (g.fact ? " Fact: " + String(g.fact).trim().replace(/([^.!?])$/, "$1.") : "") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
   y += 2;
   head("2. Positioning");
   var stmt = SA.posText(S);

@@ -302,7 +302,7 @@ function viewTm() {
     h += '<p class="sa-ms">Attractiveness score: <b>' + sc + " out of 12</b>. A higher score usually means a better target. You decide.</p>";
     h += cgroup(b + ".basis", "What are your answers based on?", SA.BASIS, true, "Be honest. An assumption is fine if you say so in your report.");
     h += chips(b + ".target", "Will you target this segment?", [["yes", "Yes, target it"], ["no", "No"]], { re: true, sm: true });
-    if (g.target) h += '<div class="sa-grid">' + placeTa(b + ".why", g.target === "yes" ? "Why target it?" : "Why leave it out?", g.target === "yes" ? "Explain your ratings: what made you think this group is big enough, easy to reach, a good fit and not too crowded? Which finding from the audit supports it?" : "Explain your ratings: which of size, reach, fit or competition makes this group a weaker choice?", "One or two sentences. At least 10 words.") + "</div>";
+    if (g.target) h += '<div class="sa-built"><small>Your decision, from your ratings</small><p>' + esc(SA.segReason(g)) + "</p></div>" + '<div class="sa-grid">' + txt(b + ".fact", "One fact that backs this up", { wide: true, opt: g.target !== "yes", ph: "for example: Audit: 4 of 5 recent Google reviews mention families", hint: "A finding, a statistic or something you saw. The full argument goes in your report." }) + "</div>";
     if (T.segs.length > 2) h += '<div style="margin-top:8px"><button type="button" class="sa-btn-s" data-rmseg="' + i + '">Remove this segment</button></div>';
     h += "</div>";
   });
@@ -364,7 +364,7 @@ function vTm() {
     if (SA.ATT.some(function (a) { var v = (g.att || {})[a.k]; return v === undefined || v === ""; })) e.push(n + ": rate size, reach online, fit and competition.");
     if (!any(g.basis)) e.push(n + ": say what your answers are based on.");
     if (!g.target) e.push(n + ": choose whether you will target it.");
-    else if (words(g.why) < 10) e.push(n + ": explain your choice in at least 10 words.");
+    else if (g.target === "yes" && words(g.fact) < 3) e.push(n + ": add one fact that backs up targeting it.");
   });
   if (!T.segs.some(function (g) { return g.target === "yes"; })) e.push("Choose at least one target segment.");
   var P = T.pos || {}, cnt = function (m) { return SA.chosen(m).length; };
@@ -667,7 +667,7 @@ function planText(objs, plan, biz) {
 function sendCopy(res, code, A) {
   if (!COPY_URL) return Promise.resolve("not-set");
   var M = modelStuff(), uri = res.doc.output("datauristring"), b64 = uri.slice(uri.indexOf("base64,") + 7);
-  var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g, S.biz.type) + " Why: " + (g.why || ""); }).join("\n");
+  var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g, S.biz.type) +  " " + SA.segReason(g) + (g.fact ? " Fact: " + g.fact : ""); }).join("\n");
   var body = { student: S.biz.student, sid: S.biz.sid, email: S.biz.email, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
     studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: SA.posFields(S), answers: JSON.stringify(S), pdf: b64 };
   return fetch(COPY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function () { return "sent"; }, function () { return "failed"; });

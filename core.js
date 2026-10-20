@@ -636,6 +636,11 @@ function segText(g, type) {
   var t = lead + "." + (rest.length ? " " + rest.join(". ") + "." : "");
   return t + (g && g.extra ? " " + g.extra : "");
 }
+function segReason(g) {
+  var a = (g && g.att) || {}, parts = ATT.map(function (x) { var v = a[x.k]; return v === undefined || v === "" ? "" : x.o[+v].replace(/:.*$/, "").toLowerCase(); }).filter(Boolean);
+  if (!g || !g.target) return "";
+  return (g.target === "yes" ? "Target: " : "Not targeted: ") + (parts.join(", ") || "not rated") + " (" + segScore(g) + "/12).";
+}
 function segScore(g) { var a = (g && g.att) || {}, n = 0; ATT.forEach(function (x) { if (a[x.k] !== undefined && a[x.k] !== "") n += (+a[x.k]) + 1; }); return n; }
 
 /* ---------- positioning (taps, by business type) ---------- */
@@ -676,7 +681,7 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
