@@ -534,7 +534,19 @@ function evalRows(objs) {
   });
 }
 
-G.SA = { PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+var WRITE_GUIDE = [
+  ["Executive summary and introduction", 500, "Write last. Say the business, the period, the three objectives, the strategies and the total budget."],
+  ["Situational analysis", 2200, "Company, SWOT, PESTEL, competitors and market. Use the audit results and screenshots as your evidence for the website, social media and past promotions."],
+  ["Target markets", 900, "Explain why you chose these bases of segmentation, why these segments, and what each persona tells you to do. Cite research behind your persona."],
+  ["Objectives", 400, "Defend each target with your baseline and a reason it is achievable."],
+  ["Strategies", 2400, "For each strategy: theory, how it works step by step, what content or tools, who it reaches, and how it supports an objective."],
+  ["Website redesign or new website", 600, "Sitemap, key pages, features and why each one helps the target segment."],
+  ["Implementation (Gantt chart)", 400, "Explain the phases, the order and the overlaps."],
+  ["Budget", 400, "Justify the big lines and attach the quotes. Explain the contingency."],
+  ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
+  ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
+];
+G.SA = { WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
