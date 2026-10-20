@@ -2,7 +2,7 @@
 (function () {
 "use strict";
 var SA = window.SA, $ = function (id) { return document.getElementById(id); };
-var DRAFT = "ia-student-audit-v1";
+var DRAFT = "ia-student-audit-v2";
 var STEPS = ["About the business", "Social media", "Google Business Profile", "Website", "Reviews and prices", "Your audit results", "Your 12-month plan", "Download"];
 
 function blank() {
@@ -43,13 +43,16 @@ function monthOpts() {
   return out.join("");
 }
 function viewBiz() {
-  var T = SA.TYPES.map(function (t) { return [t.id, t.name]; });
+  var cur = SA.TBY[S.biz.type], grp = S.biz.group || (cur ? cur.group : "");
+  var G = [["travel", "Tourism business"], ["food", "Food and drink"], ["retail", "Shop or online seller"], ["service", "Other service"]];
+  var T = SA.TYPES.filter(function (t) { return t.group === "travel"; }).map(function (t) { return [t.id, t.name]; });
   return '<h1 class="sa-h">Audit a business\'s digital presence</h1>' +
     '<p class="sa-lede">You will check the business\'s social media, Google profile, website and reviews, using only what anyone can see in public. The tool scores each part by fixed rules, then drafts a 12-month plan that you edit before you download the PDF.</p>' +
     '<div class="sa-note">Look at the real accounts while you answer, on a phone if you can. Pick "the business does not have it" when something is missing. That counts as a zero and shows up as a gap. Do not guess: choose "Can\'t tell" and the question is left out of the score.</div>' +
     '<div class="sa-card"><h3>You</h3><div class="sa-grid">' + txt("biz.student", "Your name") + txt("biz.sid", "Student ID", { opt: true }) + "</div></div>" +
     '<div class="sa-card"><h3>The business</h3><div class="sa-grid">' + txt("biz.name", "Business name", { wide: true }) + "</div>" +
-    chips("biz.type", "What kind of business is it?", T, { re: true }) +
+    chips("biz.group", "What kind of business is it?", G, { re: true }) +
+    (grp === "travel" ? chips("biz.type", "Which kind of tourism business?", T, { re: true, tip: "Hotels are judged on the big booking sites. Dive centres are judged on review pages. Tour operators are not scored on reviews." }) : "") +
     chips("biz.onLocation", "Does it serve customers at a place (a shop, guesthouse, cafe, office or dive centre people visit)?", [["yes", "Yes, customers come to a location"], ["no", "No, it works online or delivers"]], { re: true }) +
     chips("site.has", "Does the business have its own website?", [["yes", "Yes"], ["no", "No"]], { re: true }) +
     '<p class="sa-tip">Date checked: <b>' + esc(S.biz.checked) + "</b>. Every answer is stamped with this date.</p></div>" +
@@ -60,7 +63,7 @@ function vBiz() {
   var e = [], b = S.biz;
   if (!b.student.trim()) e.push("Add your name.");
   if (!b.name.trim()) e.push("Add the business name.");
-  if (!b.type) e.push("Choose the kind of business.");
+  if (!b.type) e.push(b.group === "travel" ? "Choose which kind of tourism business." : "Choose the kind of business.");
   if (!b.onLocation) e.push("Say whether customers come to a location.");
   if (!S.site.has) e.push("Say whether the business has a website.");
   return e;
@@ -71,10 +74,15 @@ function platCard(p) {
   var a = "social." + p.id, st = getp(a + ".status"), h = '<div class="sa-card"><h3>' + p.name + (p.core ? "" : ' <span class="cc-opt">(extra)</span>') + "</h3>";
   h += chips(a + ".status", "Does the business have a " + p.name + " account?", [["active", "Yes, and it is used"], ["dormant", "Yes, but it is not really used"], ["none", "The business does not have it"]], { re: true });
   if (st === "active" || st === "dormant") {
-    h += '<div class="sa-grid">' + txt(a + ".handle", "Account name or link", { opt: true }) + txt(a + ".followers", "Followers", { mode: "numeric" }) +
-      txt(a + ".lastDays", "Days since the last post", { mode: "numeric", hint: "Count from today. A post 3 days ago is 3." });
-    if (st === "active") h += txt(a + ".posts30", "Posts in the last 30 days", { mode: "numeric" }) + txt(a + ".inter", "Average likes plus comments on the last 5 posts", { mode: "numeric", hint: "Add likes and comments for each of the last 5 posts, then divide by 5." });
-    h += "</div>";
+    var lb = getp(a + ".lastBand");
+    h += '<div class="sa-grid">' + txt(a + ".handle", "Account name or link", { opt: true }) + txt(a + ".followers", "Followers", { mode: "numeric" }) + "</div>";
+    h += chips(a + ".lastBand", "When was the last post?", SA.LAST_BANDS.map(function (x) { return [x[0], x[1]]; }), { re: true, sm: true, tip: "Read it the way the app shows it, for example 3w or 2 months ago." });
+    if (lb && lb !== "never") {
+      if (st === "active") h += chips(a + ".freqBand", "Look at the 3 newest posts. How far back does the third one go?", SA.FREQ_BANDS.map(function (x) { return [x[0], x[1]]; }), { sm: true });
+      h += '<fieldset class="sa-fs"><legend>Likes plus comments on each of the 5 newest posts</legend><p class="sa-tip">Type the number for each post. The tool works out the average. Leave a box empty if there are fewer than 5 posts.</p><div class="sa-eng">';
+      for (var i = 1; i <= 5; i++) h += '<input data-p="' + a + ".eng." + i + '" inputmode="numeric" aria-label="Post ' + i + ' likes plus comments" placeholder="Post ' + i + '" value="' + esc(getp(a + ".eng." + i)) + '">';
+      h += '</div><label class="sa-sw" style="margin-top:8px"><input type="checkbox" data-p="' + a + '.likesHidden" data-bool="1"' + (getp(a + ".likesHidden") ? " checked" : "") + "> <span>Likes are hidden on this account</span></label></fieldset>";
+    }
     h += yn(a + ".bio", "The bio says what the business is, where it is and how to contact it.", "Read the profile top section.");
     h += yn(a + ".link", "There is a working link or contact button (website, booking page, WhatsApp).", "Tap it to test.");
   }
@@ -89,7 +97,13 @@ function vSocial() {
     var a = S.social[p.id] || {};
     if (!a.status) { e.push(p.name + ": choose one of the three answers."); return; }
     if (a.status === "none") return;
-    ["followers", "lastDays"].concat(a.status === "active" ? ["posts30", "inter"] : []).forEach(function (k) { if (SA.num(a[k]) == null) e.push(p.name + ": enter a number for " + { followers: "followers", lastDays: "days since the last post", posts30: "posts in 30 days", inter: "average likes plus comments" }[k] + "."); });
+    if (SA.num(a.followers) == null) e.push(p.name + ": enter the number of followers.");
+    if (!a.lastBand) { e.push(p.name + ": choose when the last post was."); }
+    else if (a.lastBand !== "never") {
+      if (a.status === "active" && !a.freqBand) e.push(p.name + ": choose how far back the third newest post goes.");
+      var n = [1, 2, 3, 4, 5].filter(function (i) { return SA.num((a.eng || {})[i]) != null; }).length;
+      if (!a.likesHidden && n < 3) e.push(p.name + ": enter likes plus comments for at least 3 posts, or tick that likes are hidden.");
+    }
     if (!a.bio) e.push(p.name + ": answer the bio question."); if (!a.link) e.push(p.name + ": answer the link question.");
   });
   return e;
@@ -121,11 +135,13 @@ function domainOf(u) { u = String(u || "").trim(); if (!u) return ""; if (!/^htt
 function viewSite() {
   var s = S.site, h = '<h1 class="sa-h">Website</h1>';
   if (s.has === "no") {
-    h += '<p class="sa-lede">The business has no website. The tool now checks how well other places do a website\'s job. The score here can reach 40 at most, and the plan will recommend building one.</p><div class="sa-card"><h3>What does the business use instead?</h3>';
+    h += '<p class="sa-lede">The business has no website, so the tool checks how well other places do a website\'s job. This score can reach 40 at most, and the plan will recommend building a website. Answer every row. If the business does none of these, tap "None of these".</p><div class="sa-card"><h3>What does the business use instead?</h3>';
     h += '<p class="sa-tip">Google profile link: ' + (S.gbp.checks && S.gbp.checks.web === "y" ? "the Google profile has a working link (counted)." : "no working link on the Google profile.") + "</p>";
-    [["linkhub", "The social bio links to a page where people can see prices or take action (a link-in-bio page, menu or shop page)."], ["wa", "A click-to-chat WhatsApp link or button is used."], ["book", "Customers can book or order online somewhere (booking site, delivery app, online shop)."]].forEach(function (x) {
-      h += '<label class="sa-sw sa-yn" style="display:flex"><input type="checkbox" data-p="site.subs.' + x[0] + '" data-bool="1"' + (s.subs[x[0]] ? " checked" : "") + "> <span>" + x[1] + "</span></label>";
-    });
+    h += yn("site.subs.linkhub", "The social bio links to a page where people can see prices or take action (a link-in-bio page, menu or shop page).", "", true);
+    h += yn("site.subs.wa", "A click-to-chat WhatsApp link or button is used.", "", true);
+    h += yn("site.subs.book", "Customers can book or order online somewhere (booking site, delivery app, online shop).", "", true);
+    h += yn("site.subs.found", "Googling the business name shows a phone number or contact, even if the business did not add it (for example from tags, a directory or a Google-made listing).", "Search the exact business name and look at the results.", true);
+    h += '<div class="sa-actions"><button type="button" class="sa-btn-s" id="saNone">None of these</button></div>';
     return h + "</div>";
   }
   var dom = domainOf(s.url), u = dom ? "https://" + dom : "";
@@ -143,7 +159,7 @@ function viewSite() {
 }
 function vSite() {
   var s = S.site, e = [];
-  if (s.has === "no") return e;
+  if (s.has === "no") { [["linkhub", "social bio link"], ["wa", "WhatsApp link"], ["book", "online booking or ordering"], ["found", "contact found by googling"]].forEach(function (x) { if (!(s.subs || {})[x[0]]) e.push("Answer the row about " + x[1] + ", or tap None of these."); }); return e; }
   if (!domainOf(s.url)) e.push("Type the website address.");
   SA.SITE_CHECKS.forEach(function (c) { if (c.id === "fast" && SA.num(s.perf) != null) return; if (!(s.checks || {})[c.id]) e.push("Answer: " + c.q); });
   return e;
@@ -157,7 +173,6 @@ function repCard(pl, travel) {
   if (st === "listed") {
     h += '<div class="sa-grid">' + txt(a + ".rating", "Rating shown (out of " + pl.scale + ")", { mode: "decimal" }) + txt(a + ".count", "Number of reviews", { mode: "numeric" }) +
       txt(a + ".lastDate", "Date of the newest review", { type: "date" }) + txt(a + ".replies", "How many of the 5 recent comments have an owner reply? (0 to 5)", { mode: "numeric" });
-    if (travel) h += txt(a + ".rate", "Nightly rate shown for the stay dates below (" + (S.stay && S.stay.cur ? S.stay.cur : "USD") + ")", { mode: "decimal", opt: true, hint: "Leave blank if the site shows no price for those dates." });
     h += "</div>";
     h += '<h4>Screenshot</h4><p class="sa-tip">Take a screenshot of the listing page showing the rating, review count and the browser address bar. It is shrunk and kept in this page only, then placed in your PDF appendix.</p>' +
       '<div class="sa-shot"><input type="file" accept="image/*" data-shot="' + pl.id + '" aria-label="Screenshot for ' + pl.name + '">' + (IMG[pl.id] ? '<img src="' + IMG[pl.id] + '" alt="Screenshot of the ' + pl.name + ' listing">' : '<span class="sa-hint">No screenshot yet.</span>') + "</div>";
@@ -169,26 +184,19 @@ function repCard(pl, travel) {
   return h + "</div>";
 }
 function viewRep() {
-  var T = SA.TBY[S.biz.type] || SA.TBY.service, travel = T.travel, list = SA.repPlatforms(S.biz.type);
-  var h = '<h1 class="sa-h">Reviews' + (travel ? " and prices" : "") + "</h1>";
-  h += '<p class="sa-lede">' + (travel ? "Travel businesses are judged on the big booking sites. Check Google, Booking.com, TripAdvisor and Agoda (at least three major sites)." : "Check the reviews on the platforms below.") + " Answer for each one, even where the business has no listing.</p>";
-  if (travel) {
-    if (!S.stay) S.stay = { cur: "USD" };
-    h += '<div class="sa-card"><h3>Price check: same stay everywhere</h3><p class="sa-sub">Pick one stay and use it on every site, so the nightly rates can be compared.</p><div class="sa-grid">' + txt("stay.in", "Check-in date", { type: "date" }) + txt("stay.out", "Check-out date", { type: "date" }) + txt("stay.guests", "Guests", { mode: "numeric" }) + txt("stay.room", "Room type", { ph: "for example Standard double" }) + "</div>" +
-      chips("stay.cur", "Currency you will use for all rates", [["USD", "USD"], ["MVR", "MVR"]]) +
-      '<div class="sa-grid">' + txt("rep.directRate", "Rate on the business's own website or WhatsApp for the same stay", { opt: true, mode: "decimal", hint: "Leave blank if you cannot find a direct price." }) + "</div></div>";
-  }
-  list.forEach(function (p) { h += repCard(p, travel); });
+  var T = SA.TBY[S.biz.type] || SA.TBY.service, list = SA.repPlatforms(S.biz.type), h = '<h1 class="sa-h">Reviews</h1>';
+  if (!list.length) return h + '<p class="sa-lede">Tour operators are not scored on review pages, so this part is not counted for this business. Go on to the next step.</p>';
+  var intro = { stay: "Hotels and guesthouses are judged on the big booking sites. Check Google, Booking.com, TripAdvisor and Agoda (at least three major sites).", dive: "Dive centres are judged on their review pages. A dive centre with no review page fails this part and scores zero, and the plan will suggest building one. Check Google and TripAdvisor.", food: "Check Google. TripAdvisor is optional.", retail: "Check Google if the business has a shop or location people visit.", service: "Check Google." }[S.biz.type] || "Check the reviews on the platforms below.";
+  h += '<p class="sa-lede">' + intro + " Answer for each one, even where the business has no listing.</p>";
+  list.forEach(function (p) { h += repCard(p, false); });
   return h;
 }
 function vRep() {
-  var e = [], T = SA.TBY[S.biz.type] || SA.TBY.service, now = S.biz.checked;
-  var list = SA.repPlatforms(S.biz.type), listed = 0;
+  var e = [], now = S.biz.checked, list = SA.repPlatforms(S.biz.type);
   list.forEach(function (pl) {
     var a = S.rep[pl.id] || {};
     if (!a.status) { if (!pl.optional) e.push(pl.name + ": choose whether the business is listed."); return; }
     if (a.status === "none") return;
-    listed++;
     var sc = SA.num(a.rating); if (sc == null || sc <= 0 || sc > pl.scale) e.push(pl.name + ": enter the rating, a number up to " + pl.scale + ".");
     if (SA.num(a.count) == null) e.push(pl.name + ": enter the number of reviews.");
     if (!a.lastDate) e.push(pl.name + ": enter the date of the newest review."); else if (SA.daysBetween(a.lastDate, now) < 0) e.push(pl.name + ": the newest review date is in the future.");
@@ -198,11 +206,6 @@ function vRep() {
     for (var i = 0; i < 5; i++) { var c = SA.arr(a.comments)[i] || {}; if (c.d && String(c.t || "").trim()) { got++; if (SA.daysBetween(c.d, now) < 0) e.push(pl.name + ": comment " + (i + 1) + " has a future date."); } else if (c.d || String(c.t || "").trim()) e.push(pl.name + ": comment " + (i + 1) + " needs both a date and the text."); }
     if (got < need) e.push(pl.name + ": enter " + need + " recent comments with dates (you have " + got + ").");
   });
-  if (T.travel) {
-    var kinds = list.filter(function (pl) { return S.rep[pl.id] && S.rep[pl.id].status; }).length;
-    if (kinds < 4) { /* the per-platform messages above already ask */ }
-    if (!S.stay || !S.stay.in || !S.stay.out) e.push("Enter the check-in and check-out dates used for the price check.");
-  }
   return e;
 }
 
@@ -323,6 +326,8 @@ $("saPrev").addEventListener("click", function () { go(S.step - 1); });
 /* generic input handling */
 document.addEventListener("click", function (ev) {
   var t = ev.target.closest("button"); if (!t) return;
+  if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.objs = null; S.plan = null; render(true); return; }
+  if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.objs = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
   if (t.id === "saEdit2") { go(6); return; }

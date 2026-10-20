@@ -13,11 +13,12 @@ var PLATS = [
 var PBY = {}; PLATS.forEach(function (p) { PBY[p.id] = p; });
 
 var TYPES = [
-  { id: "travel", name: "Hotel, guesthouse, resort or dive centre", travel: true, season: true },
-  { id: "tours", name: "Tours, activities or transfers", travel: true, season: true },
-  { id: "food", name: "Restaurant, cafe or food business", travel: false, season: false },
-  { id: "retail", name: "Shop or online seller", travel: false, season: false },
-  { id: "service", name: "Other service business", travel: false, season: false }
+  { id: "stay", name: "Hotel, guesthouse or resort", group: "travel", travel: true, season: true },
+  { id: "dive", name: "Dive centre", group: "travel", travel: true, season: true },
+  { id: "tours", name: "Tour operator or activity provider", group: "travel", travel: true, season: true },
+  { id: "food", name: "Restaurant, cafe or food business", group: "food", travel: false, season: false },
+  { id: "retail", name: "Shop or online seller", group: "retail", travel: false, season: false },
+  { id: "service", name: "Other service business", group: "service", travel: false, season: false }
 ];
 var TBY = {}; TYPES.forEach(function (t) { TBY[t.id] = t; });
 
@@ -41,6 +42,15 @@ function tally(items) {
   items.forEach(function (i) { all += i.w; if (i.v != null) { got += i.w * i.v; wsum += i.w; } });
   return { score: wsum ? Math.round(100 * got / wsum) : null, known: wsum, total: all };
 }
+/* Students pick a band instead of counting days or posts. The bands carry the same weight as the old numbers. */
+var LAST_BANDS = [["d1", "Today or yesterday", 1], ["w1", "This week", 5], ["w2", "1 to 2 weeks ago", 11], ["w4", "3 to 4 weeks ago", 25], ["m3", "1 to 3 months ago", 60], ["m12", "3 to 12 months ago", 200], ["y1", "More than a year ago", 500], ["never", "Never posted", null]];
+var FREQ_BANDS = [["w1", "Within a week", 16], ["w2", "Within 2 weeks", 8], ["m1", "Within a month", 4], ["m3", "Within 3 months", 1.5], ["old", "Older than 3 months, or fewer than 3 posts in 2026", 0.3]];
+function bandVal(list, id) { for (var i = 0; i < list.length; i++) if (list[i][0] === id) return list[i][2]; return undefined; }
+function engAvg(a) {
+  if (a.likesHidden) return null;
+  var v = [1, 2, 3, 4, 5].map(function (i) { return num((a.eng || {})[i]); }).filter(function (x) { return x != null; });
+  return v.length >= 3 ? v.reduce(function (p, c) { return p + c; }, 0) / v.length : null;
+}
 var YN = { y: 1, p: 0.5, n: 0, u: null };
 
 /* ---------- social ---------- */
@@ -52,21 +62,23 @@ function scoreSocial(s, now) {
     if (a.status === "none") {
       r.missing = true; r.score = 0; r.notes.push("The business does not have a " + p.name + " account. Counts as zero."); out.missing.push(p.id);
     } else if (a.status === "active" || a.status === "dormant") {
-      var f = num(a.followers) || 0, posts = num(a.posts30), inter = num(a.inter), last = num(a.lastDays);
+      var f = num(a.followers) || 0, never = a.lastBand === "never";
+      var last = never ? null : bandVal(LAST_BANDS, a.lastBand), posts = never ? 0 : (a.status === "dormant" ? 0 : bandVal(FREQ_BANDS, a.freqBand)), inter = never ? null : engAvg(a);
+      if (last === undefined) last = null; if (posts === undefined) posts = null;
       var er = f > 0 && inter != null ? inter / f * 100 : null;
       r.followers = f; r.er = er; r.posts = posts; r.last = last;
       var items = [
         { w: 35, v: er == null ? null : band(er / p.er) },
         { w: 25, v: posts == null ? null : clamp(posts / p.posts, 0, 1) },
-        { w: 15, v: last == null ? null : last <= 7 ? 1 : last <= 14 ? 0.8 : last <= 30 ? 0.53 : last <= 90 ? 0.2 : 0 },
+        { w: 15, v: never ? 0 : last == null ? null : last <= 7 ? 1 : last <= 14 ? 0.8 : last <= 30 ? 0.53 : last <= 90 ? 0.2 : 0 },
         { w: 15, v: YN[a.bio] === undefined ? null : YN[a.bio] },
         { w: 10, v: YN[a.link] === undefined ? null : YN[a.link] }
       ];
       if (a.status === "dormant") { items[1].v = 0; items[2].v = last == null ? 0 : Math.min(items[2].v, 0.2); }
       var t = tally(items); r.score = t.score == null ? 0 : t.score; r.conf = t.known / t.total;
       if (er != null && er / p.er < 0.6) r.notes.push("Engagement " + er.toFixed(2) + "% of followers per post, benchmark about " + p.er + "%.");
-      if (posts != null && posts < p.posts * 0.6) r.notes.push("Posted " + posts + " times in 30 days, healthy is about " + p.posts + ".");
-      if (last != null && last > 30) r.notes.push("Last post " + last + " days ago.");
+      if (posts != null && posts < p.posts * 0.6) r.notes.push("Posts about " + (posts < 1 ? "less than once" : Math.round(posts) + " times") + " a month, healthy is about " + p.posts + ".");
+      if (never) r.notes.push("The account has never posted."); else if (last != null && last > 30) r.notes.push("Last post " + (a.lastBand === "y1" ? "more than a year ago" : last > 150 ? "3 to 12 months ago" : "1 to 3 months ago") + ".");
       if (a.bio === "n" || a.bio === "p") r.notes.push("Profile bio is incomplete.");
       if (a.link === "n") r.notes.push("No working link or contact button.");
       if (a.status === "dormant") r.notes.push("Account exists but is not being used.");
@@ -147,11 +159,12 @@ var SITE_CHECKS = [
 function scoreSite(s, g) {
   s = s || {};
   if (s.has === "no") {
-    var subs = s.subs || {}, pts = 0, notes = ["The business has no website. The score shows only how well other places do the website's job (max 40)."];
+    var subs = s.subs || {}, pts = 0, notes = ["The business has no website. The score shows only how well other places do the website's job (max 40, 8 points each)."];
     var gbpWeb = g && g.checks && g.checks.web === "y";
-    [["gbpWeb", gbpWeb, "Google profile has a working booking or contact link"], ["linkhub", subs.linkhub, "Social bio links to a page where people can act"], ["wa", subs.wa, "A click-to-chat WhatsApp link is used"], ["book", subs.book, "Customers can book or order online (OTA, delivery app or shop page)"]].forEach(function (x) {
-      if (x[1]) pts += 10; else notes.push("Missing: " + x[2].toLowerCase());
+    [[gbpWeb, "Google profile has a working booking or contact link"], [subs.linkhub === "y", "Social bio links to a page where people can see prices or act"], [subs.wa === "y", "A click-to-chat WhatsApp link is used"], [subs.book === "y", "Customers can book or order online (booking site, delivery app or shop page)"], [subs.found === "y", "A phone number or contact can be found by googling the business name"]].forEach(function (x) {
+      if (x[0]) pts += 8; else notes.push("Missing: " + x[1].toLowerCase());
     });
+    if (pts === 0) notes.push("No website and no online way to enquire or order. Customers can only reach the business by phone or in person.");
     return { score: pts, none: true, notes: notes, groups: [] };
   }
   if (s.has !== "yes") return { score: 0, unanswered: true, notes: [], groups: [] };
@@ -199,17 +212,18 @@ function tagComments(list) {
   return { praise: praise, gripe: gripe, n: n, neg: negComments };
 }
 function repPlatforms(type) {
-  var t = TBY[type] || TBY.service;
-  if (t.travel) return [
+  if (type === "stay") return [
     { id: "google", name: "Google", scale: 5 }, { id: "booking", name: "Booking.com", scale: 10 },
     { id: "tripadvisor", name: "TripAdvisor", scale: 5 }, { id: "agoda", name: "Agoda", scale: 10 }];
+  if (type === "dive") return [{ id: "google", name: "Google", scale: 5 }, { id: "tripadvisor", name: "TripAdvisor", scale: 5 }];
+  if (type === "tours") return [];
   if (type === "food") return [{ id: "google", name: "Google", scale: 5 }, { id: "tripadvisor", name: "TripAdvisor", scale: 5, optional: true }];
   return [{ id: "google", name: "Google", scale: 5 }];
 }
 function volV(c) { return c >= 200 ? 1 : c >= 100 ? 0.8 : c >= 50 ? 0.6 : c >= 20 ? 0.4 : c >= 5 ? 0.2 : 0.05; }
 function recV(d) { return d == null ? null : d < 0 ? null : d <= 30 ? 1 : d <= 90 ? 0.7 : d <= 180 ? 0.35 : d <= 365 ? 0.1 : 0; }
 function scoreRep(rep, type, now, gbpNa) {
-  var list = repPlatforms(type), out = { plats: [], score: null, flags: [], rates: null, na: false };
+  var list = repPlatforms(type), out = { plats: [], score: null, flags: [], na: false };
   var sum = 0, cnt = 0;
   list.forEach(function (pl) {
     var a = (rep && rep[pl.id]) || {}, r = { id: pl.id, name: pl.name, scale: pl.scale, status: a.status || "", score: 0, notes: [], issues: [] };
@@ -224,7 +238,6 @@ function scoreRep(rep, type, now, gbpNa) {
       var recent = cm.filter(function (c) { var dd = daysBetween(c.d, now); return dd != null && dd >= 0 && dd <= 90; }).length;
       var cd = cm.map(function (c) { return c.d; }).filter(Boolean).sort();
       r.rating = rating; r.pct = rating != null ? rating / pl.scale : null; r.count = count; r.days = d; r.recent90 = recent; r.n = cm.length; r.tags = tg; r.replies = reps;
-      r.rate = num(a.rate);
       var items = [
         { w: 35, v: r.pct == null ? null : clamp((r.pct - 0.6) / 0.3, 0, 1) },
         { w: 25, v: recV(d) },
@@ -253,23 +266,6 @@ function scoreRep(rep, type, now, gbpNa) {
     var mx = lp.reduce(function (a, b) { return a.pct > b.pct ? a : b; }), mn = lp.reduce(function (a, b) { return a.pct < b.pct ? a : b; });
     if (mx.pct - mn.pct > 0.08) out.flags.push("Rating gap: " + mx.name + " " + mx.rating + "/" + mx.scale + " but " + mn.name + " " + mn.rating + "/" + mn.scale + ".");
   }
-  var res = ((TBY[type] || {}).travel) ? rates(rep, list) : null;
-  out.rates = res;
-  if (res && res.flag) out.flags.push(res.flag);
-  return out;
-}
-function rates(rep, list) {
-  var rows = [], dir = num(rep && rep.directRate);
-  list.forEach(function (pl) { var a = (rep && rep[pl.id]) || {}, r = num(a.rate); if (a.status === "listed" && r != null) rows.push({ name: pl.name, rate: r }); });
-  if (!rows.length) return null;
-  var vals = rows.map(function (r) { return r.rate; }), mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
-  var out = { rows: rows, min: mn, max: mx, gap: mn ? (mx - mn) / mn * 100 : 0, direct: dir, flag: "" };
-  if (dir != null && mn) {
-    out.dgap = (dir - mn) / mn * 100;
-    if (out.dgap > 2) out.flag = "Direct rate is " + Math.round(out.dgap) + "% higher than the cheapest site, so guests have no reason to book direct.";
-    else if (out.dgap < -2) out.flag = "";
-  }
-  if (!out.flag && out.gap > 15) out.flag = "Rates differ by " + Math.round(out.gap) + "% between sites. Rate parity needs checking.";
   return out;
 }
 
@@ -307,7 +303,7 @@ function findings(A, st) {
     if (A.gbp.missing) add("gbp", "No Google Business Profile for a business that serves customers on location.", 100 * share.gbp, "gbp:missing");
     else if (A.gbp.score < 80) add("gbp", "Google Business Profile scores " + A.gbp.score + "/100. " + (A.gbp.notes[0] || ""), (100 - A.gbp.score) * share.gbp, "gbp:weak");
   }
-  if (A.site.none) add("site", "No website. Customers cannot find prices, rooms or a booking route on the business's own page.", (100 - A.site.score) * share.site, "site:none");
+  if (A.site.none) add("site", "No website. Customers cannot find prices, products or a booking or ordering route on the business's own page.", (100 - A.site.score) * share.site, "site:none");
   else if (A.site.score < 80) {
     var worst = (A.site.groups || []).filter(function (g) { return g.score != null; }).sort(function (a, b) { return a.score - b.score; })[0];
     add("site", "Website scores " + A.site.score + "/100" + (worst ? ", weakest in " + worst.name + " (" + worst.score + ")" : "") + ".", (100 - A.site.score) * share.site, "site:weak");
@@ -363,8 +359,8 @@ function makeObjectives(A, st) {
       add({ area: "social", pri: lostBy.social || 0, text: "Lift average engagement per post on " + p0.name + " from " + bE + "% to " + tE + "% of followers and post at least " + Math.round(pb.posts * 0.75) + " times a month, all by month 12.",
         kpi: "Engagement rate on " + p0.name + " (likes plus comments per post, divided by followers)", unit: "%", base: bE, target: tE, deadline: 12, tool: "Platform insights, plus a monthly count of posts", freq: "Monthly", why: p0.notes[0] || "Engagement is below the benchmark." });
     } else {
-      var pN = Math.round(pb.posts * 0.75), pBase = p0.posts == null ? 0 : p0.posts;
-      add({ area: "social", pri: lostBy.social || 0, text: "Rebuild a steady posting habit on " + p0.name + ": from " + pBase + " posts in the last 30 days to at least " + pN + " a month by month 3, and keep it there to month 12.",
+      var pN = Math.round(pb.posts * 0.75), pBase = p0.posts == null ? 0 : Math.round(p0.posts);
+      add({ area: "social", pri: lostBy.social || 0, text: "Rebuild a steady posting habit on " + p0.name + ": from about " + pBase + " posts a month to at least " + pN + " a month by month 3, and keep it there to month 12.",
         kpi: "Posts per month on " + p0.name, unit: "", base: pBase, target: pN, deadline: 3, tool: "Platform insights, plus a monthly count of posts", freq: "Monthly", why: p0.notes[0] || "Posting is below the healthy level." });
     }
   }
@@ -374,14 +370,13 @@ function makeObjectives(A, st) {
   }
   if (!A.gbp.na) {
     var gr = A.rep.plats.filter(function (p) { return p.id === "google"; })[0] || {};
-    var cnt0 = gr.count || 0, rt0 = gr.rating || 0;
-    var cT = cnt0 + 60;
+    var known = gr.count != null, cnt0 = known ? gr.count : null, cT = known ? cnt0 + 60 : null;
     if (A.gbp.missing || A.gbp.status === "unclaimed")
-      add({ area: "gbp", pri: lostBy.gbp || 0, text: "Create or claim and verify the Google Business Profile in month 1, complete every section by month 2, then collect 5 new Google reviews a month to reach " + cT + " reviews at 4.5 or higher by month 12.",
-        kpi: "Google reviews (count)", unit: "", base: cnt0, target: cT, deadline: 12, tool: "Google Business Profile, Performance and Reviews tabs", freq: "Monthly", why: A.gbp.notes[0] || "" });
+      add({ area: "gbp", pri: lostBy.gbp || 0, text: "Create or claim and verify the Google Business Profile in month 1, complete every section by month 2, then collect 5 new Google reviews a month to reach " + (known ? cT + " reviews" : "60 reviews") + " at 4.5 or higher by month 12.",
+        kpi: "Google reviews (count)", unit: "", base: cnt0, target: cT, baseNote: known ? "" : "Enter the current number of Google reviews.", deadline: 12, tool: "Google Business Profile, Performance and Reviews tabs", freq: "Monthly", why: A.gbp.notes[0] || "" });
     else
-      add({ area: "gbp", pri: lostBy.gbp || 0.5, text: "Complete every Google Business Profile section by month 2, then add 5 Google reviews a month to move from " + cnt0 + " to " + cT + " reviews with an average of 4.5 or higher by month 12.",
-        kpi: "Google reviews (count) and average rating", unit: "", base: cnt0, target: cT, deadline: 12, tool: "Google Business Profile, Performance and Reviews tabs", freq: "Monthly", why: A.gbp.notes[0] || "The profile is a free route to local customers." });
+      add({ area: "gbp", pri: lostBy.gbp || 0.5, text: "Complete every Google Business Profile section by month 2, then add 5 Google reviews a month to " + (known ? "move from " + cnt0 + " to " + cT : "add 60 new") + " reviews with an average of 4.5 or higher by month 12.",
+        kpi: "Google reviews (count) and average rating", unit: "", base: cnt0, target: cT, baseNote: known ? "" : "Enter the current number of Google reviews.", deadline: 12, tool: "Google Business Profile, Performance and Reviews tabs", freq: "Monthly", why: A.gbp.notes[0] || "The profile is a free route to local customers." });
   }
   var sTarget = Math.max(80, A.site.score + 20); sTarget = Math.min(sTarget, 95);
   if (A.site.none)
@@ -398,10 +393,10 @@ function makeObjectives(A, st) {
       add({ area: "rep", pri: lostBy.rep || 0, text: "Raise the reputation score on " + worst.name + " from " + worst.score + " to 80 or higher by month 9 by replying to every review within 3 days and keeping the newest review under 30 days old" + (miss2.length ? ", and list the business on " + miss2.join(" and ") + " by month 3" : "") + ".",
         kpi: "Reputation score on " + worst.name + " (0 to 100)", unit: "", base: worst.score, target: 80, deadline: 9, tool: "Platform dashboards, then re-run this audit", freq: "Monthly", why: worst.notes[0] || "" });
     else if (miss2.length)
-      add({ area: "rep", pri: lostBy.rep || 0, text: "List the business on " + miss2.join(" and ") + " by month 3 and collect at least 10 recent reviews on each by month 12.", kpi: "Listings live and review count", unit: "", base: 0, target: 10, deadline: 12, tool: "Platform dashboards", freq: "Monthly", why: "Guests search these sites before they book." });
+      add({ area: "rep", pri: lostBy.rep || 0, text: "Create and complete the business's review profile on " + miss2.join(" and ") + " by month 3, then collect at least 10 recent reviews on each by month 12.", kpi: "Listings live and review count", unit: "", base: 0, target: 10, deadline: 12, tool: "Platform dashboards", freq: "Monthly", why: "Guests search these sites before they book." });
   }
-  var bizKpi = T.travel ? "Direct bookings per month (enquiries that become stays or trips)" : "Enquiries or orders per month from digital channels";
-  add({ area: "biz", pri: 0.9, text: T.travel ? "Increase direct bookings (website, WhatsApp, phone) by 25% over the baseline by month 12 and reduce the reliance on commission-paying sites." : "Increase enquiries or orders that come from digital channels by 25% over the baseline by month 12.",
+  var isStay = b.type === "stay", bizKpi = isStay ? "Direct bookings per month (website, WhatsApp, phone)" : T.travel ? "Enquiries or bookings per month from digital channels" : "Enquiries or orders per month from digital channels";
+  add({ area: "biz", pri: 0.9, text: isStay ? "Increase direct bookings (website, WhatsApp, phone) by 25% over the baseline by month 12 and reduce the reliance on commission-paying sites." : T.travel ? "Increase enquiries and bookings that come from digital channels by 25% over the baseline by month 12." : "Increase enquiries or orders that come from digital channels by 25% over the baseline by month 12.",
     kpi: bizKpi, unit: "", base: null, target: null, deadline: 12, tool: "Booking or order log, with 'How did you hear about us?' and WhatsApp counts", freq: "Monthly", baseNote: "Enter the current monthly number from the business's own records.", why: "This ties the online work to sales, which the assignment asks the plan to do." });
   O.sort(function (a, c) { return c.pri - a.pri; });
   if (O.length > 5) { var biz = O.filter(function (o) { return o.area === "biz"; }); O = O.filter(function (o) { return o.area !== "biz"; }).slice(0, 4).concat(biz); }
@@ -439,7 +434,7 @@ function makeStrategies(A, st, objs) {
   var web = A.site.none ? { n: "Build a new mobile-first website", u: 12000, k: "new" } : (A.site.score < 75 ? { n: "Redesign the existing website", u: 7000, k: "redesign" } : { n: "Targeted improvements to the existing website", u: 2500, k: "tune" });
   line("web", { name: web.n + " (design, pages, " + (T.travel ? "booking or enquiry route, " : "enquiry route, ") + "simple menu, FAQ)", basis: "Estimate", unit: web.u, qty: 1, kind: "oneoff", start: 1, end: A.site.none ? 3 : 2, note: "Not on the Islandeative price list. Replace with 2 or 3 written quotes." });
   if (A.site.none) line("web", { name: "Domain, hosting and SSL certificate", basis: "At cost", unit: 200, qty: 1, kind: "monthly", start: 1, end: 12, note: "About MVR 2,400 a year. Confirm with a hosting provider." });
-  if (T.travel && (A.site.none || (st.site.checks || {}).contact !== "y"))
+  if (b.type === "stay" && (A.site.none || (st.site.checks || {}).contact !== "y"))
     line("web", { name: "Booking page or enquiry-to-WhatsApp flow", basis: "Price list", unit: 3500, qty: 1, kind: "oneoff", start: 2, end: 3 });
   line("web", { name: "Blog or news articles answering customer questions (2 a month)", basis: "Price list", unit: 250, qty: 2, kind: "monthly", start: A.site.none ? 4 : 3, end: 12, note: "Priced as two static posts a month." });
   // seo
@@ -471,7 +466,7 @@ function makeStrategies(A, st, objs) {
   line("affil", { name: "Partner or affiliate commission (paid only when a sale is made)", basis: "Estimate", unit: 1000, qty: 1, kind: "monthly", start: 4, end: 12, note: "Estimate of about 10% of attributed sales. Replace using the sales forecast." });
 
   var on = { web: true, seo: true, content: true, smads: true, banner: hasSite || true, email: true,
-    infl: !!(T.travel || b.type === "food") && tot < 15000, viral: lowEng, affil: !!T.travel && A.rep.plats.filter(function (p) { return p.status === "listed"; }).length >= 2 };
+    infl: !!(T.travel || b.type === "food") && tot < 15000, viral: lowEng, affil: b.type === "stay" && A.rep.plats.filter(function (p) { return p.status === "listed"; }).length >= 2 };
   var why = {
     web: A.site.none ? "The business has no website. A simple, fast site is the base for search, ads and AI answers." : "Website score " + A.site.score + "/100. " + ((A.site.notes && A.site.notes[0]) || ""),
     seo: "Google profile and website are how people find the business when they search.",
@@ -537,6 +532,6 @@ function evalRows(objs) {
 }
 
 G.SA = { PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
-  repPlatforms: repPlatforms, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
+  repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);

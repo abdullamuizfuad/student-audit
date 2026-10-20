@@ -151,8 +151,8 @@ function build(S, IMG, fonts, logo, dims) {
     if (fails.length) table([{ w: 124, h: "Check" }, { w: 50, h: "Area" }], fails, { zebra: true, size: 7.5 }); else para("Every counted check passed.");
   }
 
-  head("Audit detail: reviews and prices");
-  if (A.rep.score == null) para("Not counted for this business.");
+  head("Audit detail: reviews");
+  if (A.rep.score == null) para(T.id === "tours" ? "Not counted. Tour operators are not scored on review pages." : "Not counted for this business.");
   else {
     table([{ w: 28, h: "Platform" }, { w: 24, h: "Rating" }, { w: 20, h: "Reviews", al: "r" }, { w: 28, h: "Newest review" }, { w: 22, h: "Owner replies" }, { w: 14, h: "Score", al: "r" }, { w: 38, h: "Main issue" }],
       A.rep.plats.map(function (p) {
@@ -166,13 +166,6 @@ function build(S, IMG, fonts, logo, dims) {
       var pr = Object.keys(p.tags.praise).map(function (k) { return k + " (" + p.tags.praise[k] + ")"; }), gr = Object.keys(p.tags.gripe).map(function (k) { return k + " (" + p.tags.gripe[k] + ")"; });
       para(p.name + ": guests praise " + (pr.join(", ") || "nothing specific") + ". Complaints: " + (gr.join(", ") || "none found") + ". " + p.recent90 + " of " + p.n + " recent comments are from the last 90 days." + (p.warn ? " Check: " + p.warn : ""), { size: 8.5, gap: 1.8 });
     } });
-    if (A.rep.rates) {
-      var R = A.rep.rates, cur = (S.stay && S.stay.cur) || "USD";
-      h3("Nightly rates for the same stay (" + (S.stay.in || "") + " to " + (S.stay.out || "") + ", " + (S.stay.guests || "?") + " guests, " + (S.stay.room || "room type not given") + ", " + cur + ")");
-      var rr = R.rows.map(function (r) { return [r.name, f0(r.rate)]; }); if (R.direct != null) rr.push([{ t: "Business's own website or WhatsApp", b: true }, { t: f0(R.direct), b: true }]);
-      table([{ w: 120, h: "Where the rate was found" }, { w: 54, h: "Rate per night", al: "r" }], rr, { zebra: true });
-      para("Lowest " + f0(R.min) + ", highest " + f0(R.max) + ", gap " + Math.round(R.gap) + "%." + (R.dgap != null ? " Direct is " + (R.dgap > 0 ? Math.round(R.dgap) + "% above" : Math.round(-R.dgap) + "% below") + " the cheapest site." : ""), { size: 8.5 });
-    }
   }
 
   /* ---------- plan ---------- */
@@ -291,16 +284,18 @@ function build(S, IMG, fonts, logo, dims) {
   if (!anyEv) para("No review platforms were listed for this business.");
 
   head("Appendix B: social media inputs");
-  table([{ w: 30, h: "Platform" }, { w: 26, h: "Status" }, { w: 22, h: "Followers", al: "r" }, { w: 22, h: "Posts/30d", al: "r" }, { w: 28, h: "Avg interactions", al: "r" }, { w: 22, h: "Last post", al: "r" }, { w: 24, h: "Bio / link" }],
-    SA.PLATS.map(function (p) { var a = (S.social || {})[p.id] || {}; var yl = { y: "Yes", p: "Partly", n: "No", u: "?" }; return [{ t: p.name, b: true }, a.status === "none" ? "Does not have" : a.status === "dormant" ? "Not used" : a.status === "active" ? "Active" : "-", a.status && a.status !== "none" ? f0(SA.num(a.followers) || 0) : "-", a.status === "active" ? String(a.posts30) : "-", a.status === "active" ? String(a.inter) : "-", a.status && a.status !== "none" ? a.lastDays + " days" : "-", a.status && a.status !== "none" ? (yl[a.bio] || "-") + " / " + (yl[a.link] || "-") : "-"]; }), { zebra: true });
+  var LB = {}; SA.LAST_BANDS.forEach(function (x) { LB[x[0]] = x[1]; }); var FB = {}; SA.FREQ_BANDS.forEach(function (x) { FB[x[0]] = x[1]; });
+  table([{ w: 24, h: "Platform" }, { w: 26, h: "Status" }, { w: 18, h: "Followers", al: "r" }, { w: 32, h: "Last post" }, { w: 36, h: "3rd newest post" }, { w: 22, h: "Avg likes+comm.", al: "r" }, { w: 16, h: "Bio/link" }],
+    SA.PLATS.map(function (p) { var a = (S.social || {})[p.id] || {}; var yl = { y: "Yes", p: "Partly", n: "No", u: "?" }, on = a.status && a.status !== "none", av = (function () { var v = [1, 2, 3, 4, 5].map(function (i) { return SA.num((a.eng || {})[i]); }).filter(function (x) { return x != null; }); return v.length ? Math.round(v.reduce(function (x, y) { return x + y; }, 0) / v.length) : null; })();
+      return [{ t: p.name, b: true }, a.status === "none" ? "Does not have" : a.status === "dormant" ? "Not used" : a.status === "active" ? "Active" : "-", on ? f0(SA.num(a.followers) || 0) : "-", on ? (LB[a.lastBand] || "-") : "-", on && a.status === "active" ? (FB[a.freqBand] || "-") : "-", on ? (a.likesHidden ? "hidden" : av == null ? "-" : String(av)) : "-", on ? (yl[a.bio] || "-") + "/" + (yl[a.link] || "-") : "-"]; }), { zebra: true, size: 7.8 });
 
   head("Appendix C: how the scores are worked out");
   bullets([
     "Overall score = social 30%, Google profile 20%, website 25%, reviews 25%. Parts that do not apply are left out and the rest re-weighted.",
-    "Social media: each platform out of 100 = engagement 35, posting frequency 25, recency of last post 15, bio 15, working link 10. A platform the business does not have scores 0. The three core platforms (Instagram, Facebook, TikTok) are averaged, and YouTube or LinkedIn can add up to 8 points.",
+    "Social media: each platform out of 100 = engagement 35, posting frequency 25, recency of last post 15, bio 15, working link 10. The student picks time bands (for example '3 to 4 weeks ago') and the tool scores them. A platform the business does not have scores 0. The three core platforms (Instagram, Facebook, TikTok) are averaged, and YouTube or LinkedIn can add up to 8 points.",
     "Google Business Profile: weighted checks (claimed 3, hours 2, contact 2, website link 2, photos 2, category, recent update, description and booking button 1 each). No profile for a location-based business scores 0.",
-    "Website: basics and function 35, SEO 25, answer engines and AI search 20, simple to use 20. Yes counts full, Partly half, No zero. Can't tell is left out. With no website, a substitute score of up to 40 is shown.",
-    "Reviews: rating 35, recency of newest review 25, review volume 15, owner replies 15, complaint themes 10. Ratings are put on a common scale (Booking.com and Agoda are out of 10, Google and TripAdvisor out of 5). A platform with no listing scores 0.",
+    "Website: basics and function 35, SEO 25, answer engines and AI search 20, simple to use 20. Yes counts full, Partly half, No zero. Can't tell is left out. With no website, a substitute score of up to 40 is shown (8 points each for a working Google link, a social bio link, click-to-chat, online booking or ordering, and a contact that can be found by googling).",
+    "Reviews: rating 35, recency of newest review 25, review volume 15, owner replies 15, complaint themes 10. Ratings are put on a common scale (Booking.com and Agoda are out of 10, Google and TripAdvisor out of 5). A platform with no listing scores 0. Tour operators are not scored on reviews.",
     "Limits: five comments is a small sample, the theme tagging reads English words only, the tool cannot prove that reviews are genuine, and prices change daily. All figures are as seen on the date checked."
   ], { size: 8.8 });
 
