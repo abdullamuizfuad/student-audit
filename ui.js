@@ -267,7 +267,7 @@ var AXES = [["price", "Price", "Lower price", "Higher price"], ["range", "Offer"
 var AXBY = {}; AXES.forEach(function (a) { AXBY[a[0]] = a; });
 var CHANNELS = ["Instagram", "Facebook", "TikTok", "YouTube", "WhatsApp", "Viber", "Telegram", "Google search", "Booking sites", "Email", "Blogs and forums", "LinkedIn"];
 function ensureTm() {
-  if (!S.tm) S.tm = { bases: {}, segs: [], pos: { ax: "price", ay: "range", ux: 50, uy: 50, cx: 50, cy: 50 } };
+  if (!S.tm) S.tm = { bases: {}, segs: [], pos: {} };
   S.tm.segs.forEach(function (g) { if (!g.s) g.s = {}; if (!g.att) g.att = {}; if (!g.basis) g.basis = {}; if (!g.p) g.p = {}; });
   while (S.tm.segs.length < 2) S.tm.segs.push(newSeg());
 }
@@ -307,16 +307,7 @@ function viewTm() {
     h += "</div>";
   });
   if (nb >= 2 && T.segs.length < 4) h += '<div class="sa-actions" style="margin:0 0 24px"><button type="button" class="sa-btn-s" id="saAddSeg">Add another segment</button></div>';
-  var P = T.pos, ax = AXBY[P.ax], ay = AXBY[P.ay];
-  h += '<h2 class="sa-h2">3. Positioning</h2><p class="sa-sub">Complete the positioning statement in your own words, then place the business and one main competitor on the map.</p><div class="sa-card"><div class="sa-grid">' +
-    txt("tm.pos.for", "For (which target segment)", { ph: "for example: weekend families from Malé" }) + txt("tm.pos.need", "who need or want", { ph: "for example: an easy, safe short break" }) + txt("tm.pos.cat", "the business is the (category)", { ph: "for example: family guesthouse on a local island" }) +
-    txt("tm.pos.benefit", "that (main benefit)", { ph: "for example: plans the whole trip in one message" }) + txt("tm.pos.comp", "Unlike (main competitor)", { ph: "name a real competitor" }) + txt("tm.pos.diff", "we (how it is different)", { ph: "for example: include ferry, meals and activities" }) +
-    txt("tm.pos.proof", "because (the reason to believe it)", { wide: true, ph: "proof: a feature, a result, a review score, an award" }) + "</div>" +
-    '<div class="sa-grid"><div class="f"><label for="f_ax">Horizontal axis</label><select id="f_ax" data-p="tm.pos.ax" data-re="1">' + AXES.map(function (a) { return '<option value="' + a[0] + '"' + (P.ax === a[0] ? " selected" : "") + ">" + a[1] + ": " + a[2] + " to " + a[3] + "</option>"; }).join("") + "</select></div>" +
-    '<div class="f"><label for="f_ay">Vertical axis</label><select id="f_ay" data-p="tm.pos.ay" data-re="1">' + AXES.map(function (a) { return '<option value="' + a[0] + '"' + (P.ay === a[0] ? " selected" : "") + ">" + a[1] + ": " + a[2] + " to " + a[3] + "</option>"; }).join("") + "</select></div></div>" +
-    '<div class="sa-map" aria-hidden="true"><span class="sa-mx">' + ax[2] + '</span><span class="sa-mx r">' + ax[3] + '</span><span class="sa-my t">' + ay[3] + '</span><span class="sa-my b">' + ay[2] + '</span><i class="sa-dot us" style="left:' + P.ux + "%;bottom:" + P.uy + '%">You</i><i class="sa-dot co" style="left:' + P.cx + "%;bottom:" + P.cy + '%">' + esc(P.comp || "Competitor") + "</i></div>" +
-    '<div class="sa-sliders">' + slider("tm.pos.ux", "Your business: " + ax[1], 0, 100, ax[2], ax[3], { step: 5, re: true }) + slider("tm.pos.uy", "Your business: " + ay[1], 0, 100, ay[2], ay[3], { step: 5, re: true }) +
-    slider("tm.pos.cx", "Competitor: " + ax[1], 0, 100, ax[2], ax[3], { step: 5, re: true }) + slider("tm.pos.cy", "Competitor: " + ay[1], 0, 100, ay[2], ay[3], { step: 5, re: true }) + "</div></div>";
+  h += viewPos();
   var tg = T.segs.filter(function (g) { return g.target === "yes"; });
   h += '<h2 class="sa-h2">4. Ideal customer personas</h2>';
   if (!tg.length) h += '<p class="sa-sub">Choose at least one target segment above. You will get one persona card for each.</p>';
@@ -332,6 +323,32 @@ function viewTm() {
         '<div class="sa-grid">' + txt(b + ".quote", "A line they might say", { wide: true, ph: "for example: Just tell me the full price and I will book", hint: "Write it in their voice, as one real sentence." }) + "</div></div>";
     });
   }
+  return h;
+}
+function viewPos() {
+  var T = S.tm, P = T.pos || (T.pos = {}), PS = SA.posSet(S.biz.type), tg = T.segs.filter(function (g) { return g.target === "yes"; });
+  if (!P.cat) P.cat = PS.cat[S.biz.type] || PS.cat[Object.keys(PS.cat)[0]];
+  if (!P.ax) { P.ax = PS.ax[0][0]; P.ay = PS.ax[1][0]; }
+  var h = '<h2 class="sa-h2">3. Positioning</h2><p class="sa-sub">Tap to build the positioning statement. It decides how the business wants the target segment to see it compared with a competitor.</p><div class="sa-card">';
+  if (!tg.length) return h + '<p class="sa-sub">Choose at least one target segment above first.</p></div>';
+  h += chips("tm.pos.seg", '1. For which target segment? <span class="sa-pick">Pick one</span>', tg.map(function (g) { return [g.id, esc(g.name || "Unnamed segment")]; }), { sm: true });
+  var sg = tg.filter(function (g) { return g.id === P.seg; })[0], wants = sg ? SA.chosen((sg.s || {}).benefit) : [];
+  if (sg) h += wants.length ? cgroup("tm.pos.need", "2. What do they want?", wants, true, "These come from what you picked for this segment.") : '<p class="sa-tip">2. Go back to this segment and pick what they want most (Behavioural) first.</p>';
+  h += '<div class="sa-grid">' + txt("tm.pos.cat", "3. The business is a", { ph: "for example: guesthouse", hint: "Edit it if a more exact word fits." }) + "</div>";
+  h += cgroup("tm.pos.ben", "4. Its main benefit", PS.ben, false);
+  h += '<div class="sa-grid">' + txt("tm.pos.comp", "5. Its main competitor", { ph: "name a real competitor", hint: "A business your target segment would also consider." }) + "</div>";
+  h += cgroup("tm.pos.diff", "6. How it is different from that competitor", SA.POS_DIFF, true).replace(/data-tg=/g, 'data-max="2" data-tg=').replace("Pick all that apply", "Pick up to two");
+  h += cgroup("tm.pos.proof", "7. What proves it?", SA.POS_PROOF, true) + '<div class="sa-grid">' + txt("tm.pos.fact", "The fact itself", { opt: true, ph: "for example: 4.8 on Google from 120 reviews" }) + "</div>";
+  h += '<div class="sa-built"><small>Your positioning statement</small><p>' + esc(SA.posText(S)) + "</p></div></div>";
+  var comp = P.comp || "the competitor", ax = SA.posAx(S.biz.type, P.ax) || PS.ax[0], ay = SA.posAx(S.biz.type, P.ay) || PS.ax[1];
+  h += '<div class="sa-card"><h3>Positioning map</h3><p class="sa-sub">Choose two things customers compare, then say how the business compares with ' + esc(comp) + '. The competitor sits in the middle.</p>' +
+    chips("tm.pos.ax", 'Compare on (across) <span class="sa-pick">Pick one</span>', PS.ax.map(function (a) { return [a[0], a[1]]; }), { sm: true }) +
+    chips("tm.pos.ay", 'Compare on (up and down) <span class="sa-pick">Pick one</span>', PS.ax.map(function (a) { return [a[0], a[1]]; }), { sm: true });
+  h += chips("tm.pos.rx", "Compared with " + esc(comp) + ", its " + ax[1].toLowerCase() + ' is <span class="sa-pick">Pick one</span>', [["lo", ax[2]], ["same", "About the same"], ["hi", ax[3]]], { sm: true });
+  h += chips("tm.pos.ry", "Compared with " + esc(comp) + ", its " + ay[1].toLowerCase() + ' is <span class="sa-pick">Pick one</span>', [["lo", ay[2]], ["same", "About the same"], ["hi", ay[3]]], { sm: true });
+  var ux = SA.posXY(P.rx), uy = SA.posXY(P.ry), same = ux === 50 && uy === 50;
+  h += '<div class="sa-map" aria-hidden="true"><span class="sa-mx">' + ax[2] + '</span><span class="sa-mx r">' + ax[3] + '</span><span class="sa-my t">' + ay[3] + '</span><span class="sa-my b">' + ay[2] + '</span><i class="sa-dot co" style="left:50%;bottom:50%">' + esc(P.comp || "Competitor") + '</i>' +
+    (P.rx && P.ry ? '<i class="sa-dot us" style="left:' + ux + "%;bottom:" + (same ? 62 : uy) + '%">' + esc(S.biz.name || "You") + "</i>" : "") + "</div></div>";
   return h;
 }
 function vTm() {
@@ -350,8 +367,16 @@ function vTm() {
     else if (words(g.why) < 10) e.push(n + ": explain your choice in at least 10 words.");
   });
   if (!T.segs.some(function (g) { return g.target === "yes"; })) e.push("Choose at least one target segment.");
-  var P = T.pos; if (["for", "need", "cat", "benefit", "comp", "diff", "proof"].some(function (k) { return !String(P[k] || "").trim(); })) e.push("Positioning: fill in every box of the statement.");
-  if (P.ax === P.ay) e.push("Positioning: choose two different axes for the map.");
+  var P = T.pos || {}, cnt = function (m) { return SA.chosen(m).length; };
+  if (!P.seg || !T.segs.some(function (g) { return g.id === P.seg && g.target === "yes"; })) e.push("Positioning: choose the target segment.");
+  if (!cnt(P.need)) e.push("Positioning: pick what they want.");
+  if (!String(P.cat || "").trim()) e.push("Positioning: say what kind of business it is.");
+  if (!P.ben) e.push("Positioning: pick its main benefit.");
+  if (!String(P.comp || "").trim()) e.push("Positioning: name the main competitor.");
+  if (!cnt(P.diff)) e.push("Positioning: pick how it is different.");
+  if (!cnt(P.proof)) e.push("Positioning: pick what proves it.");
+  if (P.ax === P.ay) e.push("Positioning map: choose two different things to compare.");
+  if (!P.rx || !P.ry) e.push("Positioning map: say how the business compares with the competitor on both.");
   T.segs.forEach(function (g, i) {
     if (g.target !== "yes") return; var p = g.p || {}, n = "Persona for " + (g.name || "segment " + (i + 1));
     if (!String(p.name || "").trim() || SA.num(p.age) == null) e.push(n + ": add a name and an age.");
@@ -576,7 +601,7 @@ document.addEventListener("click", function (ev) {
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
-  if (t.dataset.tg) { var tp = t.dataset.tg; setp(tp, !getp(tp)); render(true); return; }
+  if (t.dataset.tg) { var tp = t.dataset.tg; if (t.dataset.max && !getp(tp)) { var par = tp.slice(0, tp.lastIndexOf(".")); if (SA.chosen(getp(par)).length >= +t.dataset.max) { showErr(["Pick up to " + t.dataset.max + ". Untick one first."]); return; } } setp(tp, !getp(tp)); render(true); return; }
   if (t.id === "saAddSeg") { ensureTm(); S.tm.segs.push(newSeg()); render(true); return; }
   if (t.dataset.rmseg !== undefined) { S.tm.segs.splice(+t.dataset.rmseg, 1); render(true); return; }
   if (t.id === "saEdit2") { go(8); return; }
@@ -644,7 +669,7 @@ function sendCopy(res, code, A) {
   var M = modelStuff(), uri = res.doc.output("datauristring"), b64 = uri.slice(uri.indexOf("base64,") + 7);
   var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g, S.biz.type) + " Why: " + (g.why || ""); }).join("\n");
   var body = { student: S.biz.student, sid: S.biz.sid, email: S.biz.email, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
-    studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: S.tm.pos, answers: JSON.stringify(S), pdf: b64 };
+    studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: SA.posFields(S), answers: JSON.stringify(S), pdf: b64 };
   return fetch(COPY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function () { return "sent"; }, function () { return "failed"; });
 }
 function makeIt() {

@@ -170,7 +170,7 @@ function build(S, IMG, fonts, logo, dims) {
 
   /* ---------- target market ---------- */
   var BL = { demo: "Demographic", geo: "Geographic", psy: "Psychographic", beh: "Behavioural" };
-  var AXL = { price: ["Price", "Lower price", "Higher price"], range: ["Offer", "Basic", "Full service"], style: ["Style", "Traditional", "Modern"], local: ["Reach", "Local", "International"], speed: ["Booking", "Slow and manual", "Instant and online"] };
+  var AXL_OLD = { price: ["Price", "Lower price", "Higher price"], range: ["Offer", "Basic", "Full service"], style: ["Style", "Traditional", "Modern"], local: ["Reach", "Local", "International"], speed: ["Booking", "Slow and manual", "Instant and online"] };
   var TM = S.tm || { bases: {}, segs: [], pos: {} }, PO = TM.pos || {}, uk = function (o) { return Object.keys(o || {}).filter(function (k) { return o[k]; }); };
   doc.addPage(); y = TOP;
   fill(tint(ACC, 0.9)); doc.roundedRect(M, y - 5, CW, 11, 3, 3, "F"); F("fb", 8.5, ACC); tx("TARGET MARKET (written by the student, laid out by the tool)", M + 4, y + 1.5); y += 12;
@@ -180,15 +180,17 @@ function build(S, IMG, fonts, logo, dims) {
   TM.segs.forEach(function (g) { para((g.target === "yes" ? "Why " : "Why not ") + g.name + ": " + String(g.why || "").trim().replace(/([^.!?])$/, "$1.") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
   y += 2;
   head("2. Positioning");
-  var stmt = "For " + (PO["for"] || "...") + " who " + (PO.need || "...") + ", " + S.biz.name + " is the " + (PO.cat || "...") + " that " + (PO.benefit || "...") + ". Unlike " + (PO.comp || "...") + ", we " + (PO.diff || "...") + " because " + (PO.proof || "...") + ".";
+  var stmt = SA.posText(S);
   fill([246, 249, 251]); F("fb", 10, INK); var sl = split(stmt, CW - 10); room(sl.length * lh(10) + 10); doc.roundedRect(M, y - 4.5, CW, sl.length * lh(10) + 7, 3, 3, "F"); F("fb", 10, INK); tx(sl.join("\n"), M + 5, y + 0.5); y += sl.length * lh(10) + 9;
-  var ax = AXL[PO.ax] || AXL.price, ay = AXL[PO.ay] || AXL.range, MS = 62; room(MS + 16);
-  var mx = M + 16, my = y + 4;
+  var PS = SA.posSet(S.biz.type), axA = SA.posAx(S.biz.type, PO.ax) || PS.ax[0], ayA = SA.posAx(S.biz.type, PO.ay) || PS.ax[1], MS = 62; room(MS + 16);
+  var ax = [axA[1], axA[2], axA[3]], ay = [ayA[1], ayA[2], ayA[3]];
+  var mx = M + 22, my = y + 4;
   fill([246, 249, 251]); doc.rect(mx, my, MS, MS, "F"); stroke(LINE); doc.setLineWidth(0.2); doc.rect(mx, my, MS, MS); doc.line(mx + MS / 2, my, mx + MS / 2, my + MS); doc.line(mx, my + MS / 2, mx + MS, my + MS / 2);
   F("fr", 7, MUT); tx(ax[1], mx, my + MS + 4); tx(ax[2], mx + MS, my + MS + 4, { align: "right" }); tx(ay[1], mx - 2, my + MS, { align: "right" }); tx(ay[2], mx - 2, my + 3, { align: "right" });
-  function dot(px, py, col, lbl, below) { var dx = mx + MS * (+px || 0) / 100, dy = my + MS - MS * (+py || 0) / 100; fill(col); doc.circle(dx, dy, 2, "F"); F("fb", 7.5, INK); var ly = below ? dy + 5.6 : dy - 3; tx(lbl, Math.max(mx + 1, Math.min(mx + MS - 1, dx)), ly, { align: dx < mx + 14 ? "left" : dx > mx + MS - 14 ? "right" : "center" }); }
-  dot(PO.cx, PO.cy, COL.bad, PO.comp || "Competitor", true); dot(PO.ux, PO.uy, ACC, S.biz.name);
-  F("fr", 8.5, MUT); tx(split("Perceptual map. Horizontal: " + ax[0] + ". Vertical: " + ay[0] + ". Placed by the student, based on the evidence in the report.", CW - MS - 22).join("\n"), mx + MS + 8, my + 6);
+  function dot(px, py, col, lbl, below) { var dx = mx + MS * px / 100, dy = my + MS - MS * py / 100; fill(col); doc.circle(dx, dy, 2, "F"); F("fb", 7.5, INK); tx(lbl, Math.max(mx + 1, Math.min(mx + MS - 1, dx)), below ? dy + 5.6 : dy - 3, { align: dx < mx + 14 ? "left" : dx > mx + MS - 14 ? "right" : "center" }); }
+  var ux = SA.posXY(PO.rx), uy = SA.posXY(PO.ry); if (ux === 50 && uy === 50) uy = 62;
+  dot(50, 50, COL.bad, PO.comp || "Competitor", true); dot(ux, uy, ACC, S.biz.name);
+  F("fr", 8.5, MUT); tx(split("Positioning map. Across: " + ax[0] + ". Up and down: " + ay[0] + ". The competitor sits in the middle; the business is placed by how the student compared it.", CW - MS - 30).join("\n"), mx + MS + 8, my + 6);
   y = my + MS + 12;
   room(110);
   head("3. Ideal customer personas", "One persona for each target segment. Each is a made-up person who stands for the segment, written by the student from the source shown.");

@@ -637,6 +637,33 @@ function segText(g, type) {
   return t + (g && g.extra ? " " + g.extra : "");
 }
 function segScore(g) { var a = (g && g.att) || {}, n = 0; ATT.forEach(function (x) { if (a[x.k] !== undefined && a[x.k] !== "") n += (+a[x.k]) + 1; }); return n; }
+
+/* ---------- positioning (taps, by business type) ---------- */
+var POS = {
+  travel: { ben: ["Easy planning", "Value for money", "A real local experience", "Comfort and rest", "Adventure and activities", "Safety for families", "Privacy"], cat: { stay: "guesthouse", dive: "dive centre", tours: "tour operator" },
+    ax: [["price", "Price", "Lower price", "Higher price"], ["exp", "Experience", "A simple stay", "A full experience"], ["style", "Style", "More traditional", "More modern"], ["service", "Service", "More self-service", "More personal"], ["feel", "Feel", "More local", "More international"]] },
+  food: { ben: ["Great taste", "Value for money", "Fast service", "Healthy choices", "A cosy place to meet", "Halal and trusted ingredients", "Easy delivery"], cat: { food: "cafe or restaurant" },
+    ax: [["price", "Price", "Lower price", "Higher price"], ["quality", "Quality", "Simpler", "More premium"], ["speed", "Speed", "Slower", "Faster"], ["range", "Menu", "Smaller menu", "Bigger menu"], ["mood", "Atmosphere", "More casual", "More upscale"]] },
+  retail: { ben: ["Low prices", "The latest trends", "Original, trusted products", "Wide choice", "Fast delivery", "Easy returns", "Friendly service"], cat: { retail: "shop" },
+    ax: [["price", "Price", "Lower price", "Higher price"], ["range", "Range", "Fewer products", "More products"], ["quality", "Quality", "Basic", "More premium"], ["delivery", "Delivery", "Slower", "Faster"], ["style", "Style", "More classic", "More trendy"]] },
+  service: { ben: ["Saves time", "Peace of mind", "Expert results", "Reliable and on time", "Costs less than doing it in-house", "Flexible times", "Local support"], cat: { service: "service provider" },
+    ax: [["price", "Price", "Lower price", "Higher price"], ["speed", "Response", "Slower response", "Faster response"], ["expert", "Expertise", "More general", "More specialist"], ["service", "Service", "More standard", "More personal"], ["scope", "Scope", "One service", "A full package"]] }
+};
+var POS_DIFF = ["Lower price", "Better location", "Faster service", "More personal service", "Higher quality", "More choice", "Easier online booking or ordering", "Better reviews", "Local knowledge", "Eco-friendly"];
+var POS_PROOF = ["Review score", "Years in business", "Awards or certifications", "Customer photos and stories", "A guarantee", "Well-known clients or partners", "My audit results"];
+function posSet(type) { return POS[segCtx(type)]; }
+function posAx(type, id) { var a = posSet(type).ax; for (var i = 0; i < a.length; i++) if (a[i][0] === id) return a[i]; return null; }
+function posFields(st) {
+  var P = (st.tm || {}).pos || {}, segs = (st.tm || {}).segs || [], g = segs.filter(function (x) { return x.id === P.seg; })[0];
+  var lo = function (a) { return a.map(function (x) { return /^WhatsApp/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1); }); };
+  return { "for": g ? g.name : "", need: chosen(P.need).length ? "want " + andJoin(lo(chosen(P.need))) : "", cat: P.cat || "", benefit: P.ben ? "gives them " + lo([P.ben])[0] : "",
+    comp: P.comp || "", diff: chosen(P.diff).length ? "stand out for " + andJoin(lo(chosen(P.diff))) : "", proof: chosen(P.proof).length ? "of our " + andJoin(lo(chosen(P.proof))) + (P.fact ? " (" + P.fact + ")" : "") : "" };
+}
+function posText(st) {
+  var f = posFields(st), d = function (x) { return x || "..."; };
+  return "For " + d(f["for"]) + " who " + d(f.need) + ", " + (st.biz.name || "the business") + " is the " + d(f.cat) + " that " + d(f.benefit) + ". Unlike " + d(f.comp) + ", we " + d(f.diff) + ", because " + d(f.proof) + ".";
+}
+function posXY(r) { return r === "lo" ? 22 : r === "hi" ? 78 : 50; }
 var WRITE_GUIDE = [
   ["Executive summary and introduction", 500, "Write last. Say the business, the period, the three objectives, the strategies and the total budget."],
   ["Situational analysis", 2200, "Company, SWOT, PESTEL, competitors and market. Use the audit results and screenshots as your evidence for the website, social media and past promotions."],
@@ -649,7 +676,7 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
