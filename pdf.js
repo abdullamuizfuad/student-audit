@@ -234,8 +234,12 @@ function build(S, IMG, fonts, logo, dims) {
     para("Why it fits: " + (SA.chosen(s.fits).join(", ") || "-") + "." + (s.note ? " " + String(s.note).trim().replace(/([^.!?])$/, "$1.") : ""), { size: 9, gap: 1.5 });
     var serves = []; S.objs.forEach(function (o, i) { if ((s.links || {})[o.id]) serves.push("Objective " + (i + 1)); }); if (serves.length) para("Supports: " + serves.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
     var reach = []; (TM.segs || []).forEach(function (g) { if ((s.segl || {})[g.id]) reach.push(g.name); }); if (reach.length) para("Reaches: " + reach.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
+    var cxp = SA.stratCtx(S, s.id), chs = SA.scChoices(s.id, (S.plan.cfg || {})[s.id], cxp);
+    para("How it works: " + SA.SCFG[s.id].flow.map(function (f, k) { return (k + 1) + ". " + f; }).join("  "), { size: 8.5, gap: 1.5, col: MUT });
+    if (chs.length) para("Choices: " + chs.join(". ") + ".", { size: 8.5, gap: 1.5 });
     ls.forEach(function (l) {
-      var when = l.kind === "oneoff" ? "once, " + lab[l.start - 1].label : l.kind === "every" ? "every " + l.every + " months from " + lab[l.start - 1].label : l.kind === "months" ? "in " + (l.months || []).map(function (m) { return lab[m - 1].short; }).join(" and ") : "monthly, " + lab[l.start - 1].short + " to " + lab[l.end - 1].short;
+      var mo = l.months || [], consec = mo.length > 1 && mo[mo.length - 1] - mo[0] === mo.length - 1;
+      var when = l.kind === "oneoff" || mo.length === 1 ? "once, " + lab[(mo[0] || l.start) - 1].label : l.kind === "every" ? "every " + l.every + " months from " + lab[l.start - 1].label : l.kind === "months" ? (consec ? "monthly, " + lab[mo[0] - 1].short + " to " + lab[mo[mo.length - 1] - 1].short : "in " + mo.map(function (m) { return lab[m - 1].short; }).join(", ")) : "monthly, " + lab[l.start - 1].short + " to " + lab[l.end - 1].short;
       para(l.name + " (" + when + ")", { bullet: true, size: 8.8, gap: 1.2 });
     });
     if (s.theory) para("Theory to read and cite: " + s.theory + ".", { size: 8.3, col: MUT, gap: 4 });

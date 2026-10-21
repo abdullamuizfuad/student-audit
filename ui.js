@@ -455,6 +455,8 @@ function objCard(o, i) {
   var cap = "objs." + i;
   return '<div class="sa-obj"><div class="f"><label for="ot' + i + '">Write the objective</label><textarea id="ot' + i + '" data-p="' + cap + '.text" data-sm="' + i + '" placeholder="for example: Increase Instagram engagement from 1.2% to 3% by month 9 by posting Reels three times a week">' + esc(o.text) + "</textarea>" +
     '<span class="sa-hint">What will change, on which channel, by how much and by when. The boxes below hold the numbers.</span></div>' +
+    chips(cap + ".type", 'What kind of objective? <span class="sa-pick">Pick one</span>', SA.OBJ_TYPES, { sm: true, re: true }) +
+    (o.type ? chips(cap + ".kpi", 'Pick a KPI <span class="sa-pick">Pick one, or write your own below</span>', SA.KPIS[o.type].map(function (k) { return [k[0], k[0]]; }), { sm: true }) : "") +
     '<div class="sa-grid4"><div><label for="ok' + i + '">KPI (what you will measure)</label><input id="ok' + i + '" data-p="' + cap + '.kpi" data-sm="' + i + '" placeholder="for example: engagement rate" value="' + esc(o.kpi) + '"></div>' +
     '<div><label for="ou' + i + '">Unit</label><select id="ou' + i + '" data-p="' + cap + '.unit">' + [["%", "%"], ["", "number"], [" MVR", "MVR"], [" points", "score"]].map(function (u) { return '<option value="' + u[0] + '"' + ((o.unit || "") === u[0] ? " selected" : "") + ">" + u[1] + "</option>"; }).join("") + "</select></div>" +
     '<div><label for="ob' + i + '">Baseline now</label><input id="ob' + i + '" data-p="' + cap + '.base" data-sm="' + i + '" inputmode="decimal" value="' + esc(o.base) + '"></div>' +
@@ -481,6 +483,7 @@ function vObj() {
     var n = "Objective " + (i + 1);
     if (words(o.text) < 8) e.push(n + ": write it out in at least 8 words.@@objs." + i + ".text");
     else if (!specific(o)) e.push(n + ": make it specific: include the numbers and the time in the sentence.@@objs." + i + ".text");
+    if (!o.type) e.push(n + ": pick what kind of objective it is.@@objs." + i + ".type");
     if (!String(o.kpi).trim()) e.push(n + ": name the KPI.@@objs." + i + ".kpi");
     var b = SA.num(o.base), t = SA.num(o.target);
     if (b == null) e.push(n + ": enter a baseline number.@@objs." + i + ".base"); if (t == null) e.push(n + ": enter a target number.@@objs." + i + ".target");
@@ -491,28 +494,14 @@ function vObj() {
 
 /* ---------- step 9: strategies, Gantt, budget ---------- */
 function ensurePlan() {
-  if (S.plan && S.plan.sel) return;
+  if (S.plan && S.plan.cfg) return;
   var M = modelStuff();
-  S.plan = { strats: M.plan.strats.map(function (s) { return { id: s.id, name: s.name, theory: s.theory, why: s.why, rec: !!s.on, on: false, links: {}, segl: {}, fits: {}, note: "" }; }), sel: {}, lines: [], cont: "10" };
+  S.plan = { strats: M.plan.strats.map(function (s) { return { id: s.id, name: s.name, theory: s.theory, why: s.why, rec: !!s.on, on: false, links: {}, segl: {}, fits: {}, note: "" }; }), cfg: {}, lines: [], cont: "10" };
 }
 function deriveLines() {
-  if (!S.plan || !S.plan.sel) return;
-  var lab = SA.monthLabels(S.biz.start), L = [];
-  S.plan.strats.forEach(function (s) {
-    var sel = S.plan.sel[s.id] || {};
-    SA.actsFor(s.id, S).forEach(function (a) {
-      var v = sel[a.id]; if (!v || !v.on) return;
-      var f = v.f || a.f[0], st = SA.clamp(+v.st || 1, 1, 12), unit = a.basis === "At cost" && a.amt ? +(v.amt || a.unit) : a.basis === "Market 2026" ? (SA.num(v.quote) != null ? SA.num(v.quote) : a.unit) : a.unit;
-      var l = { s: s.id, a: a.id, name: a.n, basis: a.basis, unit: unit, qty: a.count ? +(v.n || a.count[0]) : 1, disc: !!a.disc, season: !!a.season && f === "month", start: st, end: 12, f: f };
-      var pay = f === "once" && unit * l.qty >= 2000 ? +(v.pay || 1) : 1;
-      if (f === "once" && pay > 1) { var ms = []; for (var mm = st; mm <= Math.min(12, st + pay - 1); mm++) ms.push(mm); l.kind = "months"; l.months = ms; l.unit = Math.round(unit * l.qty / ms.length); l.qty = 1; l.end = ms[ms.length - 1]; l.name = a.n + " (paid over " + ms.length + " months)"; }
-      else if (f === "once") { l.kind = "oneoff"; l.end = st; }
-      else if (f === "month") l.kind = "monthly";
-      else if (f === "quarter") { l.kind = "every"; l.every = 3; }
-      else { l.kind = "months"; l.months = lab.filter(function (m) { return m.i >= st && SA.isPeak(m.cal); }).map(function (m) { return m.i; }); if (!l.months.length) l.months = [st]; l.start = l.months[0]; l.end = l.months[l.months.length - 1]; }
-      L.push(l);
-    });
-  });
+  if (!S.plan || !S.plan.cfg) return;
+  var L = [];
+  S.plan.strats.forEach(function (s) { if (!s.on) return; SA.scLines(s.id, S.plan.cfg[s.id] || {}, SA.stratCtx(S, s.id)).forEach(function (l) { l.s = s.id; L.push(l); }); });
   S.plan.lines = L;
 }
 var GC = { web: "#245582", seo: "#2a82bb", content: "#2fa9a9", smads: "#3f9e74", banner: "#1C3F63", email: "#5FA8D3", infl: "#1F7F7F", viral: "#7cc9a6", affil: "#7A93A8" };
@@ -545,35 +534,30 @@ function viewPick() {
   });
   return h;
 }
+function flowHtml(id) { return '<ol class="sa-flow">' + SA.SCFG[id].flow.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ol>"; }
 function viewStrat(si) {
-  var s = S.plan.strats[si], b = "plan.strats." + si, sel = S.plan.sel[s.id] || (S.plan.sel[s.id] = {}), lab = SA.monthLabels(S.biz.start);
-  var tg = S.tm.segs.filter(function (g) { return g.target === "yes"; }), on = S.plan.strats.filter(function (x) { return x.on; });
+  var s = S.plan.strats[si], b = "plan.strats." + si, cb = "plan.cfg." + s.id, v = S.plan.cfg[s.id] || (S.plan.cfg[s.id] = {}), lab = SA.monthLabels(S.biz.start), cx = SA.stratCtx(S, s.id);
+  var tg = S.tm.segs.filter(function (g) { return g.target === "yes"; });
   var h = '<h1 class="sa-h">' + esc(s.name) + '</h1><p class="sa-lede">' + esc(SA.STRAT_DESC[s.id] || "") + (s.rec ? " <b>Your audit points here:</b> " + esc(s.why) : "") + "</p>";
+  h += '<div class="sa-card"><h3>How it works</h3><p class="sa-tip">This is how a business runs it, step by step. Explain each step in your report.</p>' + flowHtml(s.id) + "</div>";
   h += '<div class="sa-card"><h3>Why it fits</h3>' +
     '<fieldset class="sa-fs"><legend>Which objectives does it support? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + S.objs.map(function (o, i) { var t = String(o.text || "Objective " + (i + 1)); return mchip(b + ".links", o.id, (i + 1) + ". " + esc(t.length > 60 ? t.slice(0, 58) + "..." : t)); }).join("") + "</div></fieldset>" +
     '<fieldset class="sa-fs"><legend>Which target segments does it reach? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + tg.map(function (g) { return mchip(b + ".segl", g.id, esc(g.name || "Segment")); }).join("") + "</div></fieldset>" +
     cgroup(b + ".fits", "Why does it fit?", SA.FITS, true) +
     '<p class="sa-tip"><b>Theory to link it to in your report:</b> ' + esc(s.theory) + ".</p>" +
     '<div class="sa-grid">' + txt(b + ".note", "Anything to add in one line?", { wide: true, opt: true, ph: "for example: families plan trips on Instagram during school holidays" }) + "</div></div>";
-  h += '<div class="sa-card"><h3>What will you do?</h3><p class="sa-tip">Tap the activities you will run. Then choose how often and when it starts. The tool adds the cost.</p>';
-  SA.actsFor(s.id, S).forEach(function (a) {
-    var p = "plan.sel." + s.id + "." + a.id, v = sel[a.id] || {}, act = !!v.on;
-    h += '<div class="sa-act' + (act ? " on" : "") + '"><button type="button" class="sa-acttg" data-tg="' + p + '.on" aria-pressed="' + act + '"><span class="nm">' + esc(a.n) + '</span><span class="pr">' + (a.basis === "Own time" ? "No cash cost" : a.basis === "At cost" && a.amt ? "Ad spend, paid at cost" : "MVR " + a.unit.toLocaleString("en-US") + (a.count ? " each" : a.f[0] === "month" && a.f.length === 1 ? " a month" : "")) + ' <i class="bs">' + BASIS_TXT[a.basis] + "</i></span></button>";
-    if (act) {
-      var fv = v.f || (a.f.length === 1 ? a.f[0] : "");
-      h += '<div class="sa-actb">' + (a.f.length > 1 ? chips(p + ".f", 'How often? <span class="sa-pick">Pick one</span>', a.f.map(function (k) { return [k, SA.FREQ[k]]; }), { sm: true }) : '<p class="sa-ms" style="margin-top:12px"><b>' + (a.f[0] === "once" ? "One-off" : SA.FREQ[a.f[0]]) + "</b></p>");
-      var tot1 = (a.basis === "Market 2026" && SA.num(v.quote) != null ? SA.num(v.quote) : a.unit) * (a.count ? +(v.n || a.count[0]) : 1);
-      if (fv === "once" && tot1 >= 2000) h += chips(p + ".pay", 'Spread the cost <span class="sa-pick">Pick one</span>', [["1", "Pay at once"], ["3", "Over 3 months"], ["6", "Over 6 months"]], { sm: true, tip: "Bigger set-up costs are often paid in stages, for example a deposit and then payments as the work is done." });
-      if (a.count) h += chips(p + ".n", (v.f === "once" ? "How many?" : "How many each time?") + ' <span class="sa-pick">Pick one</span>', a.count.map(function (n) { return [String(n), String(n)]; }), { sm: true });
-      if (a.amt) h += chips(p + ".amt", 'How much each time? <span class="sa-pick">Pick one</span>', a.amt.map(function (n) { return [String(n), "MVR " + n.toLocaleString("en-US")]; }), { sm: true });
-      if (a.basis === "Market 2026") h += '<div class="sa-grid">' + txt(p + ".quote", "Your quote (MVR)", { opt: true, mode: "numeric", ph: "estimate: " + a.unit.toLocaleString("en-US"), hint: "Leave empty to use the 2026 market estimate. Put a real quote here if you get one." }) + "</div>";
-      if ((v.f || a.f[0]) !== "peak") h += '<div class="f sa-start"><label for="st_' + s.id + a.id + '">' + (fv === "once" ? "When" : "Starts in") + '</label><select id="st_' + s.id + a.id + '" data-p="' + p + '.st" data-re="1">' + lab.map(function (m) { return '<option value="' + m.i + '"' + ((+v.st || 1) === m.i ? " selected" : "") + ">" + m.label + "</option>"; }).join("") + "</select></div>";
-      h += "</div>";
-    }
-    h += "</div>";
+  h += '<div class="sa-card"><h3>How you will run it</h3><div class="f sa-start"><label for="st_' + s.id + '">' + (s.id === "web" ? "Start building in" : "Start in") + '</label><select id="st_' + s.id + '" data-p="' + cb + '.st" data-re="1">' + lab.map(function (m) { return '<option value="' + m.i + '"' + ((+v.st || 1) === m.i ? " selected" : "") + ">" + m.label + "</option>"; }).join("") + "</select></div>";
+  if (s.id === "web" && cx.contentArticles) h += '<p class="sa-tip">Your content plan already writes blog articles, so articles are not costed again here.</p>';
+  if (s.id === "seo" && !cx.hasSite && !cx.webOn) h += '<p class="sa-tip">The business has no website and you have not chosen Blogs and Websites, so SEO here is about Google Maps, the Google profile and directories.</p>';
+  SA.scQs(s.id, cx).forEach(function (q) {
+    if (q.multi) h += cgroup(cb + "." + q.k, q.q, [], true, q.tip).replace('<div class="sa-opts"></div>', '<div class="sa-opts">' + q.o.map(function (o) { return mchip(cb + "." + q.k, o[0], esc(o[1])); }).join("") + "</div>").replace("Pick all that apply", q.opt ? "Optional, pick any" : "Pick all that apply");
+    else h += chips(cb + "." + q.k, esc(q.q) + ' <span class="sa-pick">Pick one</span>', q.o.map(function (o) { return [o[0], esc(o[1])]; }), { sm: true, tip: q.tip });
   });
-  deriveLines(); var B = SA.budget(S.plan, S.biz), sub = (B.byS[s.id] || { total: 0 }).total;
-  h += '<p class="sa-subtot">' + esc(s.name) + ": <b>MVR " + Math.round(sub).toLocaleString("en-US") + "</b> over 12 months</p>" + ganttHtml(s.id) + "</div>";
+  deriveLines(); var B = SA.budget(S.plan, S.biz), sub = (B.byS[s.id] || { total: 0 }).total, cap = SA.num(S.biz.cap) || 8000;
+  h += '<p class="sa-subtot">' + esc(s.name) + ": <b>MVR " + Math.round(sub).toLocaleString("en-US") + "</b> over 12 months. Whole plan so far: about MVR " + Math.round(B.total / 12).toLocaleString("en-US") + " a month" + (B.total / 12 > cap ? ' <span class="sa-warn">(above the MVR ' + cap.toLocaleString("en-US") + " a month the business can spend)</span>" : "") + ".</p>";
+  var ls = S.plan.lines.filter(function (l) { return l.s === s.id; });
+  if (ls.length) h += '<table class="sa-tbl sa-costs">' + ls.map(function (l) { var t = 0; for (var m = 1; m <= 12; m++) t += SA.lineCost(l, m, SA.stratCtx(S, s.id).season, lab[m - 1].cal); return "<tr><td>" + esc(l.name) + ' <i class="bs">' + BASIS_TXT[l.basis] + '</i></td><td style="text-align:end;white-space:nowrap">' + (l.basis === "Own time" ? "no cost" : "MVR " + t.toLocaleString("en-US")) + "</td></tr>"; }).join("") + "</table>";
+  h += ganttHtml(s.id) + "</div>";
   return h;
 }
 function viewBudget() {
@@ -597,16 +581,14 @@ function vPlan() {
   ensurePlan(); var e = [], on = S.plan.strats.filter(function (s) { return s.on; }), any = function (m) { return SA.chosen(m).length > 0; };
   if (on.length < 2) e.push("Choose at least 2 strategies.@@plan.strats");
   S.plan.strats.forEach(function (s, si) {
-    if (!s.on) return; var b = "plan.strats." + si, sel = S.plan.sel[s.id] || {};
+    if (!s.on) return; var b = "plan.strats." + si, v = S.plan.cfg[s.id] || {}, cx = SA.stratCtx(S, s.id);
     if (!any(s.links)) e.push(s.name + ": pick the objectives it supports.@@" + b + ".links");
     if (!any(s.segl)) e.push(s.name + ": pick the target segments it reaches.@@" + b + ".segl");
     if (!any(s.fits)) e.push(s.name + ": pick why it fits.@@" + b + ".fits");
-    var acts = SA.actsFor(s.id, S).filter(function (a) { return (sel[a.id] || {}).on; });
-    if (!acts.length) e.push(s.name + ": pick at least one activity.@@plan.sel." + s.id);
-    acts.forEach(function (a) { var v = sel[a.id], p = "plan.sel." + s.id + "." + a.id;
-      if (!v.f && a.f.length > 1) e.push(s.name + ": choose how often for \"" + a.n + "\".@@" + p + ".f");
-      if (a.count && !v.n) e.push(s.name + ": choose how many for \"" + a.n + "\".@@" + p + ".n");
-      if (a.amt && !v.amt) e.push(s.name + ": choose how much for \"" + a.n + "\".@@" + p + ".amt"); });
+    SA.scQs(s.id, cx).forEach(function (q) {
+      if (q.opt) return; var val = v[q.k], ok = q.multi ? q.o.some(function (o) { return (val || {})[o[0]]; }) : q.o.some(function (o) { return o[0] === String(val); });
+      if (!ok) e.push(s.name + ": answer \"" + q.q + "\"@@plan.cfg." + s.id + "." + q.k);
+    });
   });
   return e;
 }
@@ -675,7 +657,7 @@ function errPage(step, path) {
     if (path === "plan.strats") return 0;
     if (/^plan\.cont/.test(path)) return P.indexOf("budget");
     m = /^plan\.strats\.(\d+)/.exec(path); if (m) return P.indexOf("st:" + m[1]);
-    m = /^plan\.sel\.([a-z]+)/.exec(path); if (m) { var si = -1; S.plan.strats.forEach(function (s, j) { if (s.id === m[1]) si = j; }); return P.indexOf("st:" + si); }
+    m = /^plan\.cfg\.([a-z]+)/.exec(path); if (m) { var si = -1; S.plan.strats.forEach(function (s, j) { if (s.id === m[1]) si = j; }); return P.indexOf("st:" + si); }
   }
   return -1;
 }
@@ -757,6 +739,7 @@ document.addEventListener("click", function (ev) {
   if (t.dataset.sub !== undefined) { setSub(S.step, +t.dataset.sub); render(); return; }
   if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; S.plan = null; render(true); return; }
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
+  if (t.dataset.p && /^objs\.\d+\.kpi$/.test(t.dataset.p)) { var oi = +t.dataset.p.split(".")[1], ob = S.objs[oi], kk = (SA.KPIS[ob.type] || []).filter(function (k) { return k[0] === t.dataset.v; })[0]; ob.kpi = t.dataset.v; if (kk) ob.unit = kk[1]; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
   if (t.dataset.tg) { var tp = t.dataset.tg; if (t.dataset.max && !getp(tp)) { var par = tp.slice(0, tp.lastIndexOf(".")); if (SA.chosen(getp(par)).length >= +t.dataset.max) { showErr(["Pick up to " + t.dataset.max + ". Untick one first."]); return; } } setp(tp, !getp(tp)); render(true); return; }
