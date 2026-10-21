@@ -59,7 +59,7 @@ function viewBiz() {
     chips("site.has", "Does the business have its own website?", [["yes", "Yes"], ["no", "No"]], { re: true }) +
     '<p class="sa-tip">Date checked: <b>' + esc(S.biz.checked) + "</b>. Every answer is stamped with this date.</p></div>" +
     '<div class="sa-card"><h3>Plan settings</h3><div class="sa-grid"><div class="f"><label for="f_start">First month of the 12-month plan</label><select id="f_start" data-p="biz.start">' + monthOpts() + "</select></div>" +
-    txt("biz.cap", "About how much could the business spend on marketing each month? (MVR)", { opt: true, mode: "numeric", ph: "for example 8000", hint: "Used to keep the draft budget realistic. Leave blank for the default of MVR 8,000." }) + "</div></div>";
+    "</div></div>";
 }
 function vBiz() {
   var e = [], b = S.biz;
@@ -518,11 +518,11 @@ function ganttHtml(only) {
 }
 function budgetHtml() {
   deriveLines();
-  var B = SA.budget(S.plan, S.biz), cap = SA.num(S.biz.cap) || 8000, f = function (n) { return Math.round(n).toLocaleString("en-US"); };
+  var B = SA.budget(S.plan, S.biz), f = function (n) { return Math.round(n).toLocaleString("en-US"); };
   var h = '<table class="sa-tbl"><tr><th>Strategy</th><th style="text-align:end">12 months (MVR)</th></tr>';
   S.plan.strats.forEach(function (s) { if (s.on && B.byS[s.id]) h += "<tr><td>" + esc(s.name) + '</td><td style="text-align:end">' + f(B.byS[s.id].total) + "</td></tr>"; });
   h += "<tr><td>Contingency (" + B.cp + '%)</td><td style="text-align:end">' + f(B.cont) + '</td></tr><tr><th>Total</th><th style="text-align:end">' + f(B.total) + "</th></tr></table>";
-  h += '<p class="sa-ms">About ' + f(B.total / 12) + " MVR a month on average. " + (B.total / 12 > cap ? '<span class="sa-warn">This is above the MVR ' + f(cap) + " a month you said the business could spend. Remove something, or explain in your report why the extra spend pays off.</span>" : "It is within the monthly amount you gave.") + "</p>";
+  h += '<p class="sa-ms">About <b>MVR ' + f(B.total / 12) + "</b> a month on average.</p>";
   h += '<div class="sa-mon"><table class="sa-tbl"><tr><th>Month</th>' + B.labels.map(function (m) { return "<th>" + m.short + "</th>"; }).join("") + "</tr><tr><td>Total</td>" + B.monthly.map(function (v, i) { return "<td>" + f(v + B.contM[i]) + "</td>"; }).join("") + "</tr></table></div>";
   return { html: h, B: B };
 }
@@ -553,18 +553,31 @@ function viewStrat(si) {
     if (q.multi) h += cgroup(cb + "." + q.k, q.q, [], true, q.tip).replace('<div class="sa-opts"></div>', '<div class="sa-opts">' + q.o.map(function (o) { return mchip(cb + "." + q.k, o[0], esc(o[1])); }).join("") + "</div>").replace("Pick all that apply", q.opt ? "Optional, pick any" : "Pick all that apply");
     else h += chips(cb + "." + q.k, esc(q.q) + ' <span class="sa-pick">Pick one</span>', q.o.map(function (o) { return [o[0], esc(o[1])]; }), { sm: true, tip: q.tip });
   });
-  deriveLines(); var B = SA.budget(S.plan, S.biz), sub = (B.byS[s.id] || { total: 0 }).total, cap = SA.num(S.biz.cap) || 8000;
-  h += '<p class="sa-subtot">' + esc(s.name) + ": <b>MVR " + Math.round(sub).toLocaleString("en-US") + "</b> over 12 months. Whole plan so far: about MVR " + Math.round(B.total / 12).toLocaleString("en-US") + " a month" + (B.total / 12 > cap ? ' <span class="sa-warn">(above the MVR ' + cap.toLocaleString("en-US") + " a month the business can spend)</span>" : "") + ".</p>";
+  deriveLines(); var B = SA.budget(S.plan, S.biz), sub = (B.byS[s.id] || { total: 0 }).total;
+  h += '<p class="sa-subtot">' + esc(s.name) + ": <b>MVR " + Math.round(sub).toLocaleString("en-US") + "</b> over 12 months. Whole plan so far: about MVR " + Math.round(B.total / 12).toLocaleString("en-US") + " a month.</p>";
   var ls = S.plan.lines.filter(function (l) { return l.s === s.id; });
   if (ls.length) h += '<table class="sa-tbl sa-costs">' + ls.map(function (l) { var t = 0; for (var m = 1; m <= 12; m++) t += SA.lineCost(l, m, SA.stratCtx(S, s.id).season, lab[m - 1].cal); return "<tr><td>" + esc(l.name) + ' <i class="bs">' + BASIS_TXT[l.basis] + '</i></td><td style="text-align:end;white-space:nowrap">' + (l.basis === "Own time" ? "no cost" : "MVR " + t.toLocaleString("en-US")) + "</td></tr>"; }).join("") + "</table>";
   h += ganttHtml(s.id) + "</div>";
   return h;
 }
+var DEFEND = ["The extra sales it should bring cover the cost", "Big costs are one-off set-up, not every month", "Spend is heavier in the busy season only", "It replaces marketing the business already pays for", "It is phased: cut back if early results are weak", "A competitor spends a similar amount"];
 function viewBudget() {
-  var h = '<h1 class="sa-h">Gantt chart and budget</h1><p class="sa-lede">Built from your activities. Go back to any strategy to change what you do, how often or when.</p>';
+  deriveLines(); var B = SA.budget(S.plan, S.biz), mo = Math.round(B.total / 12), f = function (n) { return Math.round(n).toLocaleString("en-US"); };
+  var h = '<h1 class="sa-h">Gantt chart and budget</h1><p class="sa-lede">Built from your choices. Go back to any strategy to change what you do, how often or when.</p>';
   h += '<div class="sa-card"><h3>Gantt chart</h3><div id="saGantt">' + ganttHtml() + "</div></div>";
   h += '<div class="sa-card"><h3>Budget</h3>' + chips("plan.cont", 'Contingency <span class="sa-pick">Pick one</span>', [["5", "5%"], ["10", "10%"], ["15", "15%"]], { sm: true, tip: "A safety margin for price changes and surprises." }) + '<div id="saBud">' + budgetHtml().html + "</div></div>";
-  return h;
+  var big = S.plan.strats.filter(function (s) { return s.on && B.byS[s.id]; }).sort(function (a, b) { return B.byS[b.id].total - B.byS[a.id].total; });
+  h += '<div class="sa-card"><h3>Can the business defend this budget?</h3>' +
+    '<p class="sa-sub">Your plan costs about <b>MVR ' + f(mo) + "</b> a month. A common rule of thumb: small businesses spend about 5% to 10% of their sales on marketing. At this budget the business would need sales of about <b>MVR " + f(mo * 10) + " to " + f(mo * 20) + "</b> a month. Think about whether " + esc(S.biz.name || "the business") + " sells that much, or could with this plan.</p>" +
+    chips("plan.defend", 'Is this budget defensible? <span class="sa-pick">Pick one</span>', [["yes", "Yes, I can defend it"], ["trim", "No, I will make it smaller"], ["anyway", "Keep it, though it will be harder to defend"]], { sm: true, re: true });
+  if (S.plan.defend === "trim") {
+    h += '<p class="sa-tip">The biggest costs first. Open a strategy to change its rhythm, timing, budget or who does the work, or go back to remove a strategy.</p><div class="sa-opts">' +
+      big.map(function (s) { return '<button type="button" class="sa-chip sm" data-gost="' + S.plan.strats.indexOf(s) + '">' + esc(s.name) + ": MVR " + f(B.byS[s.id].total) + "</button>"; }).join("") + '<button type="button" class="sa-chip sm" data-sub="0">Add or remove strategies</button></div>';
+  } else if (S.plan.defend) {
+    h += cgroup("plan.defwhy", S.plan.defend === "yes" ? "How will you defend it in your report?" : "What will you say to defend it?", DEFEND, true);
+    if (S.plan.defend === "anyway") h += '<p class="sa-warn">Your report will need strong evidence that the extra spend pays off. The PDF notes that you chose to keep the higher budget.</p>';
+  }
+  return h + "</div>";
 }
 function viewPlan() {
   ensurePlan(); var pg = curPage(8);
@@ -580,6 +593,9 @@ function refreshBudget() {
 function vPlan() {
   ensurePlan(); var e = [], on = S.plan.strats.filter(function (s) { return s.on; }), any = function (m) { return SA.chosen(m).length > 0; };
   if (on.length < 2) e.push("Choose at least 2 strategies.@@plan.strats");
+  if (!S.plan.defend) e.push("Say whether the budget is defensible.@@plan.defend");
+  else if (S.plan.defend === "trim") e.push("You chose to make the budget smaller. Change a strategy, then come back and pick Yes or Keep it.@@plan.defend");
+  else if (!SA.chosen(S.plan.defwhy).length) e.push("Pick how you will defend the budget.@@plan.defwhy");
   S.plan.strats.forEach(function (s, si) {
     if (!s.on) return; var b = "plan.strats." + si, v = S.plan.cfg[s.id] || {}, cx = SA.stratCtx(S, s.id);
     if (!any(s.links)) e.push(s.name + ": pick the objectives it supports.@@" + b + ".links");
@@ -655,7 +671,7 @@ function errPage(step, path) {
   if (step === 7 || step === 9) { m = /^objs\.(\d+)/.exec(path); return m ? P.indexOf((step === 7 ? "obj:" : "ctl:") + m[1]) : -1; }
   if (step === 8) {
     if (path === "plan.strats") return 0;
-    if (/^plan\.cont/.test(path)) return P.indexOf("budget");
+    if (/^plan\.(cont|defend|defwhy)/.test(path)) return P.indexOf("budget");
     m = /^plan\.strats\.(\d+)/.exec(path); if (m) return P.indexOf("st:" + m[1]);
     m = /^plan\.cfg\.([a-z]+)/.exec(path); if (m) { var si = -1; S.plan.strats.forEach(function (s, j) { if (s.id === m[1]) si = j; }); return P.indexOf("st:" + si); }
   }
@@ -736,6 +752,7 @@ $("saAddSegNav").addEventListener("click", function () {
 document.addEventListener("click", function (ev) {
   var t = ev.target.closest("button"); if (!t) return;
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
+  if (t.dataset.gost !== undefined) { setSub(8, stPages().indexOf("st:" + t.dataset.gost)); render(); return; }
   if (t.dataset.sub !== undefined) { setSub(S.step, +t.dataset.sub); render(); return; }
   if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; S.plan = null; render(true); return; }
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }

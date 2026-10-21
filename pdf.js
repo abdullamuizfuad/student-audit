@@ -284,8 +284,7 @@ function build(S, IMG, fonts, logo, dims) {
   });
   room(36); h3("Total");
   table([{ w: 136, h: "" }, { w: 38, h: "MVR", al: "r" }], [["All strategies", f0(B.sub)], ["Contingency (" + B.cp + "% for price changes and surprises)", f0(B.cont)], [{ t: "Total 12-month budget", b: true }, { t: f0(B.total), b: true }], ["Average per month", f0(B.total / 12)]]);
-  var cap = SA.num(S.biz.cap) || 8000;
-  if (B.total / 12 > cap) para("This is above the MVR " + f0(cap) + " a month the student said the business could spend. A justification is needed in the report.", { col: COL.bad, bold: true, size: 9 });
+  if (S.plan.defend) para("Is the budget defensible? " + (S.plan.defend === "yes" ? "The student says yes" : "The student chose to keep it, though it will be harder to defend") + (SA.chosen(S.plan.defwhy).length ? ": " + SA.chosen(S.plan.defwhy).join("; ").toLowerCase() + "." : ".") + " At about MVR " + f0(B.total / 12) + " a month, the rule of thumb of 5% to 10% of sales means the business would need sales of about MVR " + f0(B.total / 12 * 10) + " to " + f0(B.total / 12 * 20) + " a month.", { size: 9, bold: S.plan.defend === "anyway", col: S.plan.defend === "anyway" ? COL.bad : INK });
 
   doc.addPage(); y = TOP;
   head("Monthly budget", "Each activity's cost placed in the month it is paid.");
