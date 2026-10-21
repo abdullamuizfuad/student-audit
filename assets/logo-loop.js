@@ -79,5 +79,6 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); intro(); }
   });
 
+  window.ilLogoReplay = intro;
   intro();
 })();

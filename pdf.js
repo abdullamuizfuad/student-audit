@@ -205,6 +205,14 @@ function build(S, IMG, fonts, logo, dims) {
     if (p.quote) { F("fr", 9.5, ACC); var ql = split('"' + p.quote + '"', CW - 8); room(ql.length * lh(9.5) + 3); F("fr", 9.5, ACC); tx(ql.join("\n"), M + 4, y); y += ql.length * lh(9.5) + 3; }
     para("Online: " + (chs.join(", ") || "-") + ".  Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.5, col: MUT, ind: 2, gap: 2 });
     para("Student to write in the report: what this persona means for the content, channels, offer and website.", { size: 8, col: MUT, ind: 2, gap: 2 });
+    var pr = "Create a one-page customer persona card for " + (S.biz.name || "a business") + ", a " + (((SA.TBY[S.biz.type] || {}).name) || "business").toLowerCase() + " in the Maldives. The persona is " + (p.name || "a customer") + ", aged " + (p.age || "?") + ", from " + (p.loc || "the Maldives") + ", working as " + (p.job || "?") + ". They belong to this segment: " + SA.segText(g, S.biz.type) + " They want: " + (SA.chosen(p.goal).join(", ").toLowerCase() || "?") + ". They are frustrated by: " + (SA.chosen(p.pain).join(", ").toLowerCase() || "?") + ". They buy when: " + (SA.chosen(p.trig).join(", ").toLowerCase() || "?") + ". They spend time on: " + (chs.join(", ") || "?") + ". In their words: \"" + (p.quote || "") + "\". Include a short life story, a typical day, goals, frustrations, buying triggers, favourite channels and 3 marketing implications for the business. Use an illustrated portrait, not a photo of a real person.";
+    var steps = ["1. Open gemini.google.com and paste the prompt below.", "2. Before you send it, add two details of your own (a hobby, a family situation, a recent trip or a habit) so your persona is unique.", "3. Ask Gemini to turn the answer into a visual persona card, or build the card yourself in Canva.", "4. Check that it still matches your segment and edit anything that does not.", "5. Label it AI-assisted in your report and mention it in your AI use statement."];
+    F("fr", 8.3, INK); var pl = split(pr, CW - 12), sl2 = []; steps.forEach(function (s) { sl2 = sl2.concat(split(s, CW - 12)); });
+    var bh = (sl2.length + pl.length) * lh(8.3) + 16; room(bh + 4);
+    fill(tint([58, 192, 192], 0.86)); doc.roundedRect(M, y - 2, CW, bh, 3, 3, "F");
+    F("fb", 9, ACC); tx("Make this persona stronger with Google Gemini", M + 5, y + 3.5); y += 8.5;
+    F("fr", 8.3, INK); tx(sl2.join("\n"), M + 5, y); y += sl2.length * lh(8.3) + 2;
+    F("fr", 8.3, [25, 70, 90]); tx(pl.join("\n"), M + 5, y); y += pl.length * lh(8.3) + 6;
     fill(ACC); doc.roundedRect(M, top - 1, 1.2, Math.max(8, y - top), 0.6, 0.6, "F"); y += 5;
   });
 

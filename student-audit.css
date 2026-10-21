@@ -280,3 +280,13 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}
 .sa-flow li:not(:last-child)::after{content:"";position:absolute;left:21px;bottom:-9px;width:2px;height:10px;background:var(--line)}
 .sa-costs td{font-size:.88rem}
 .sa-costs .bs{font-style:normal;font-size:.72rem;font-weight:700;margin-inline-start:6px;padding:.1em .55em;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+.sa-donelogo{display:flex;justify-content:center;margin:26px 0 8px}
+.sa-donelogo .il-logo{width:min(240px,62vw)}
+[data-theme="dark"] .sa-donelogo .il-logo{--il-word:#E6EFF5;--il-pill:#3ac0c0;--il-pill-ink:#06202F}
+.sa-modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(6,20,32,.55);backdrop-filter:blur(3px)}
+.sa-modal-box{width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--raised);color:var(--ink);border-radius:22px;padding:26px 24px;box-shadow:0 30px 80px rgba(0,0,0,.35);position:relative}
+.sa-modal-box::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;border-radius:22px 22px 0 0;background:var(--brand-grad)}
+.sa-modal-box h2{font-size:1.6rem;margin:4px 0 12px}
+.sa-modal-box p,.sa-modal-box li{font-size:.97rem}
+.sa-modal-box ul{padding-inline-start:20px;margin:0 0 12px}
+.sa-modal-box .btn{width:100%;justify-content:center;margin-top:6px}

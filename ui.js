@@ -333,7 +333,7 @@ function viewTm() {
   }
   if (k[0] === "pos") return h + viewPos();
   var g = T.segs[i];
-  h += '<p class="sa-sub">A persona is a made-up person who stands for the whole segment. Keep it consistent with the segment you built.</p>';
+  h += '<p class="sa-sub">A persona is a made-up person who stands for the whole segment. Keep it consistent with the segment you built. Your PDF will include a ready-made prompt to turn this persona into a full persona card with Google Gemini.</p>';
       var b = "tm.segs." + i + ".p", s = g.s || {}, ages = SA.chosen(s.age), from = SA.chosen(s.from), bb = SA.isB2B(S.biz.type, g), PL = SA.plists(S.biz.type, g);
       h += '<div class="sa-card"><h3>Persona for: ' + esc(g.name || "Segment " + (i + 1)) + '</h3><p class="sa-sub">' + (bb ? "Business customers: make the persona the person who decides to buy, for example the HR or finance manager. " : "") + esc(SA.segText(g, S.biz.type)) + '</p><div class="sa-grid">' +
         txt(b + ".name", "Give them a name", { ph: "a typical name for this group" }) + txt(b + ".age", "Age", { mode: "numeric", ph: ages.length ? "within " + ages.join(" or ") : "for example 34" }) +
@@ -687,7 +687,6 @@ function viewDone() {
     '<div class="sa-card"><p><b>' + esc(S.biz.name) + "</b>: digital visibility " + A.overall + "/100. " + S.objs.length + " objectives, " + S.plan.strats.filter(function (s) { return s.on; }).length + " strategies, " + nseg + " persona" + (nseg === 1 ? "" : "s") + ", total budget MVR " + Math.round(B.total).toLocaleString("en-US") + '.</p>' +
     '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I understand that when I download, a copy of this PDF and my answers is sent to my lecturer (Muiz Fuad) so the work can be checked for authorship. Nothing else about me is collected.</label>" +
     '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saPdf"' + (S.agree ? "" : " disabled") + '>Download PDF</button><button type="button" class="btn btn-ghost" id="saEdit2">Back to the plan</button><button type="button" class="btn btn-ghost" id="saNew">Start another audit</button></div><p class="sa-ms" id="saPdfMsg" role="status"></p></div>' +
-    '<div class="sa-card"><h3>What you still write</h3><p class="sa-sub">The assignment is about 8,000 words. The tool saves you the structuring, costing and charts. These are the parts that need your own writing, with suggested word counts. Use them as a guide, not a rule.</p><table class="sa-tbl"><tr><th>Section</th><th style="text-align:end">Words</th></tr>' + wg + "</table></div>" +
     '<div class="sa-note">Use of AI: your report must state honestly how you used AI, including this tool. The PDF is evidence and structure, and the explanations, justifications, theory and references in your report must be your own work.</div>';
 }
 
@@ -708,6 +707,7 @@ function render(keepScroll) {
   $("saPrev").style.visibility = i === 0 ? "hidden" : "visible";
   $("saNext").textContent = i === 5 ? "Start building my plan" : i === 9 && last ? "Continue to download" : "Next";
   $("saNav").hidden = i === 10;
+  var dl = $("saDoneLogo"), wasHidden = dl.hidden; dl.hidden = i !== 10; if (i === 10 && wasHidden && window.ilLogoReplay) setTimeout(window.ilLogoReplay, 50);
   $("saErr").innerHTML = "";
   if (!keepScroll) { window.scrollTo({ top: 0, behavior: "instant" }); $("saStep").focus({ preventScroll: true }); }
   save();
@@ -808,6 +808,10 @@ function shot(inp) {
   fr.readAsDataURL(f);
 }
 
+function showModal(mailMsg) { var m = $("saModal"); $("saModalMail").textContent = mailMsg; m.hidden = false; setTimeout(function () { $("saModalClose").focus(); }, 30); }
+$("saModalClose").addEventListener("click", function () { $("saModal").hidden = true; var b = $("saPdf"); if (b) b.focus(); });
+$("saModal").addEventListener("click", function (ev) { if (ev.target.id === "saModal") $("saModal").hidden = true; });
+document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("saModal").hidden) $("saModal").hidden = true; });
 /* PDF and the copy for the lecturer */
 var COPY_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzpXGVOhzHwtc9kz0xs4XgmtL-ZMFoI0oJwjf0a5Gv8GdDmCTe8xqatUFhcKrQOyMkaYQ/exec";
 function sha(str) {
@@ -837,7 +841,9 @@ function makeIt() {
     var code = (h || String(Date.now())).slice(0, 10).toUpperCase(), S2 = JSON.parse(JSON.stringify(S)); S2.code = code;
     return window.SA_PDF(S2, IMG).then(function (res) {
       msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Sending the copy to your lecturer...";
+      showModal("Sending a copy to you and your lecturer...");
       return sendCopy(res, code, A).then(function (st) {
+        $("saModalMail").textContent = st === "sent" ? "A copy has also been emailed to you and sent to your lecturer (check Junk if you do not see it)." : "The email copy could not be sent. Keep the downloaded file and send it to your lecturer yourself.";
         msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. " + (st === "sent" ? "A copy was sent to your lecturer and to your student email (check Junk if you do not see it). Submission code " + code + "." : "The copy to your lecturer could not be sent. Email the PDF to your lecturer yourself. Submission code " + code + ".");
       });
     });
