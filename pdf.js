@@ -319,8 +319,31 @@ function build(S, IMG, fonts, logo, dims) {
   para("Re-run this audit at month 6 and month 12 and compare the scores with the baseline in this report. Report each KPI against its milestone, explain every miss, and say what was changed.", { size: 9 });
 
   doc.addPage(); y = TOP;
+  /* checklist: evidence screenshots and mockups */
+  head("Checklist: evidence and mockups", "Screenshots prove every claim in the report. Mockups show how the plan would look. Take screenshots on the date you checked, keep the date visible where you can, and put each one in the report section shown.");
+  var EV = [], add = function (t, sec, done) { EV.push([done ? "Included" : "", t, sec]); };
+  SA.PLATS.forEach(function (pl) { var a = (S.social || {})[pl.id] || {}; if (!a.status) return;
+    if (a.status === "none") { if (pl.core) add(pl.name + ": a search showing the business has no account", "2. Situational analysis"); return; }
+    add(pl.name + ": the profile page showing followers, bio and link", "2. Situational analysis");
+    add(pl.name + ": the newest posts with likes, comments and dates visible", "2. Situational analysis"); });
+  if (!A.gbp.na) add(A.gbp.missing ? "Google Maps: a search showing the business has no Google profile" : "Google Business Profile: the full listing (hours, contact, photos, reviews)", "2. Situational analysis");
+  if (A.site.none) add("Google: a search for the business name showing it has no website", "2. Situational analysis");
+  else { add("Website: the homepage on desktop and on mobile", "2. Situational analysis"); if (SA.num(S.site.perf) != null || SA.num(S.site.seo) != null) add("PageSpeed Insights results for mobile", "2. Situational analysis"); add("Website: the pages behind any failed checks", "2. Situational analysis"); }
+  A.rep.plats.forEach(function (rp) { if (rp.status === "listed") add(rp.name + ": review page and 5 recent comments", "2. Situational analysis", true); else if (rp.missing) add(rp.name + ": a search showing the business is not listed", "2. Situational analysis"); });
+  if (PO.comp) add("Your main competitor (" + PO.comp + "): its profile or website, used for the positioning map", "3. Target market (positioning)");
+  TM.segs.forEach(function (g) { if (g.target === "yes" && g.fact) add("The source of your fact for " + g.name + ": \"" + g.fact + "\"", "3. Target market"); });
+  var est = []; (S.plan.lines || []).forEach(function (l) { if (l.basis === "Market 2026" && est.indexOf(l.name.replace(/ \(.*$/, "")) < 0) est.push(l.name.replace(/ \(.*$/, "")); });
+  if (est.length) add("Quotes or price pages for the 2026 market estimates: " + est.join(", "), "7. Budget (supporting documents)");
+  add("Price pages for any paid tools or subscriptions you mention", "7. Budget (supporting documents)");
+  table([{ w: 16, h: "Done" }, { w: 112, h: "Screenshot" }, { w: 46, h: "Report section" }], EV.map(function (r) { return [r[0] ? { t: r[0], b: true, c: COL.good } : "[  ]", r[1], r[2]]; }), { size: 7.8, zebra: true });
+  var MK = []; S.plan.strats.forEach(function (s) { if (!s.on) return; (SA.MOCKUPS[s.id] || []).forEach(function (m) { MK.push(["[  ]", m, "5. Strategies: " + s.name]); }); });
+  h3("Mockups to make");
+  para("Use the business's real colours and logo, and label each one as a concept design. Free tools such as Canva or Figma are enough.", { size: 8.5, col: MUT });
+  table([{ w: 16, h: "Done" }, { w: 112, h: "Mockup" }, { w: 46, h: "Report section" }], MK, { size: 7.8, zebra: true });
+
+  doc.addPage(); y = TOP;
   head("What the student still writes", "The assignment is about 8,000 words. The tool structured and costed the plan. These sections need the student's own writing, with suggested lengths.");
-  table([{ w: 56, h: "Section" }, { w: 106, h: "What to write" }, { w: 12, h: "Words", al: "r" }], SA.WRITE_GUIDE.map(function (r) { return [{ t: r[0], b: true }, r[2], String(r[1])]; }), { size: 8, zebra: true });
+  table([{ w: 56, h: "Section" }, { w: 106, h: "What to write" }, { w: 12, h: "Words", al: "r" }], SA.WRITE_GUIDE.map(function (r) { return [{ t: r[0], b: true }, r[2], r[1] ? String(r[1]) : "-"]; }), { size: 8, zebra: true });
   para("Use of AI: the report must state honestly how AI, including this tool, was used. Explanations, justification, theory and references must be the student's own work.", { size: 9, bold: true });
 
   /* appendices */

@@ -682,7 +682,7 @@ function vPage(step) { var cur = +(S.sub || {})[step] || 0; return VALID[step]()
 /* ---------- step 11: download ---------- */
 function viewDone() {
   var A = SA.audit(S), B = SA.budget(S.plan, S.biz), nseg = S.tm.segs.filter(function (g) { return g.target === "yes"; }).length;
-  var wg = SA.WRITE_GUIDE.map(function (r) { return "<tr><td><b>" + esc(r[0]) + "</b><br><span class=\"sa-ms\">" + esc(r[2]) + "</span></td><td style=\"text-align:end;white-space:nowrap\">about " + r[1] + "</td></tr>"; }).join("");
+  var wg = SA.WRITE_GUIDE.filter(function (r) { return r[1]; }).map(function (r) { return "<tr><td><b>" + esc(r[0]) + "</b><br><span class=\"sa-ms\">" + esc(r[2]) + "</span></td><td style=\"text-align:end;white-space:nowrap\">about " + r[1] + "</td></tr>"; }).join("");
   return '<h1 class="sa-h">Download your evidence report</h1><p class="sa-lede">Your PDF holds the audit evidence, your target market, positioning and personas, your objectives, strategies, Gantt chart, budget, and control and evaluation table. The tool structured and costed it. You wrote the thinking.</p>' +
     '<div class="sa-card"><p><b>' + esc(S.biz.name) + "</b>: digital visibility " + A.overall + "/100. " + S.objs.length + " objectives, " + S.plan.strats.filter(function (s) { return s.on; }).length + " strategies, " + nseg + " persona" + (nseg === 1 ? "" : "s") + ", total budget MVR " + Math.round(B.total).toLocaleString("en-US") + '.</p>' +
     '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I understand that when I download, a copy of this PDF and my answers is sent to my lecturer (Muiz Fuad) so the work can be checked for authorship. Nothing else about me is collected.</label>" +

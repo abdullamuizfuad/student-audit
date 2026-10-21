@@ -942,6 +942,17 @@ function scChoices(id, v, c) {
   }).filter(Boolean);
 }
 
+var MOCKUPS = {
+  web: ["Homepage on desktop and on mobile", "The booking or enquiry page", "A sitemap of the main pages"],
+  seo: ["Google Business Profile before and after", "An example page title and description for one key page"],
+  content: ["One week of the content engine: the pillar piece, 2 carousels, a Reel cover or storyboard and 2 stories"],
+  smads: ["One ad for each platform you chose, with the headline, image or video and the call to action"],
+  banner: ["A Google search ad (headlines and text)", "A display banner"],
+  email: ["One message template for a key-moment campaign (email, WhatsApp or SMS)"],
+  infl: ["The brief you would send a creator", "A sample creator post"],
+  viral: ["The campaign post with the rules and the prize"],
+  affil: ["A partner offer card with the code or link"]
+};
 var WRITE_GUIDE = [
   ["Executive summary and introduction", 500, "Write last. Say the business, the period, the three objectives, the strategies and the total budget."],
   ["Situational analysis", 2200, "Company, SWOT, PESTEL, competitors and market. Use the audit results and screenshots as your evidence for the website, social media and past promotions."],
@@ -949,12 +960,13 @@ var WRITE_GUIDE = [
   ["Objectives", 400, "Defend each target with your baseline and a reason it is achievable."],
   ["Strategies", 2400, "For each strategy: theory, how it works step by step, what content or tools, who it reaches, and how it supports an objective."],
   ["Website redesign or new website", 600, "Sitemap, key pages, features and why each one helps the target segment."],
+  ["Mockups", 0, "About 6 to 10 visuals from the mockup checklist, each placed under its strategy with a one-line caption."],
   ["Implementation (Gantt chart)", 400, "Explain the phases, the order and the overlaps."],
   ["Budget", 400, "Justify the big lines and attach the quotes. Explain the contingency."],
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { MOCKUPS: MOCKUPS, SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
