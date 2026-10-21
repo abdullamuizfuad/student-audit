@@ -685,7 +685,7 @@ function viewDone() {
   var wg = SA.WRITE_GUIDE.filter(function (r) { return r[1]; }).map(function (r) { return "<tr><td><b>" + esc(r[0]) + "</b><br><span class=\"sa-ms\">" + esc(r[2]) + "</span></td><td style=\"text-align:end;white-space:nowrap\">about " + r[1] + "</td></tr>"; }).join("");
   return '<h1 class="sa-h">Download your evidence report</h1><p class="sa-lede">Your PDF holds the audit evidence, your target market, positioning and personas, your objectives, strategies, Gantt chart, budget, and control and evaluation table. The tool structured and costed it. You wrote the thinking.</p>' +
     '<div class="sa-card"><p><b>' + esc(S.biz.name) + "</b>: digital visibility " + A.overall + "/100. " + S.objs.length + " objectives, " + S.plan.strats.filter(function (s) { return s.on; }).length + " strategies, " + nseg + " persona" + (nseg === 1 ? "" : "s") + ", total budget MVR " + Math.round(B.total).toLocaleString("en-US") + '.</p>' +
-    '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I understand that when I download, a copy of this PDF and my answers is sent to my lecturer (Muiz Fuad) so the work can be checked for authorship. Nothing else about me is collected.</label>" +
+    '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I will attach this PDF to my assignment document as an appendix before I submit, and keep a copy for myself.</label>" +
     '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saPdf"' + (S.agree ? "" : " disabled") + '>Download PDF</button><button type="button" class="btn btn-ghost" id="saEdit2">Back to the plan</button><button type="button" class="btn btn-ghost" id="saNew">Start another audit</button></div><p class="sa-ms" id="saPdfMsg" role="status"></p></div>' +
     '<div class="sa-note">Use of AI: your report must state honestly how you used AI, including this tool. The PDF is evidence and structure, and the explanations, justifications, theory and references in your report must be your own work.</div>';
 }
@@ -812,40 +812,19 @@ function showModal(mailMsg) { var m = $("saModal"); $("saModalMail").textContent
 $("saModalClose").addEventListener("click", function () { $("saModal").hidden = true; var b = $("saPdf"); if (b) b.focus(); });
 $("saModal").addEventListener("click", function (ev) { if (ev.target.id === "saModal") $("saModal").hidden = true; });
 document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("saModal").hidden) $("saModal").hidden = true; });
-/* PDF and the copy for the lecturer */
-var COPY_URL = window.SA_COPY_URL || "https://script.google.com/macros/s/AKfycbzpXGVOhzHwtc9kz0xs4XgmtL-ZMFoI0oJwjf0a5Gv8GdDmCTe8xqatUFhcKrQOyMkaYQ/exec";
+/* PDF */
 function sha(str) {
   if (!window.crypto || !crypto.subtle) return Promise.resolve("");
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join(""); }, function () { return ""; });
 }
-function planText(objs, plan, biz) {
-  var B = SA.budget(plan, biz), L = [];
-  objs.forEach(function (o, i) { L.push("Objective " + (i + 1) + ": " + o.text + " | KPI " + o.kpi + " | baseline " + o.base + " | target " + o.target + " | month " + o.deadline); });
-  plan.strats.filter(function (s) { return s.on; }).forEach(function (s) { L.push("Strategy: " + s.name + " (MVR " + Math.round((B.byS[s.id] || { total: 0 }).total).toLocaleString("en-US") + ")" + (s.fits ? " | why it fits: " + SA.chosen(s.fits).join(", ") + (s.note ? ". " + s.note : "") + " | activities: " + (plan.lines || []).filter(function (l) { return l.s === s.id; }).map(function (l) { return l.name + " (" + (SA.FREQ[l.f] || l.kind) + ")"; }).join("; ") : " | " + s.why)); });
-  L.push("Total budget MVR " + Math.round(B.total).toLocaleString("en-US"));
-  return L.join("\n");
-}
-function sendCopy(res, code, A) {
-  if (!COPY_URL) return Promise.resolve("not-set");
-  var M = modelStuff(), uri = res.doc.output("datauristring"), b64 = uri.slice(uri.indexOf("base64,") + 7);
-  var tm = S.tm.segs.map(function (g) { return g.name + " [" + (g.target === "yes" ? "target" : "not target") + ", score " + SA.segScore(g) + "/12]: " + SA.segText(g, S.biz.type) +  " " + SA.segReason(g) + (g.fact ? " Fact: " + g.fact : ""); }).join("\n");
-  var body = { student: S.biz.student, sid: S.biz.sid, email: S.biz.email, business: S.biz.name, type: S.biz.type, checked: S.biz.checked, score: A.overall, code: code, pdfName: res.name, pages: res.pages,
-    studentPlan: planText(S.objs, S.plan, S.biz), modelPlan: planText(M.objs, M.plan, S.biz), segments: tm, positioning: SA.posFields(S), answers: JSON.stringify(S), pdf: b64 };
-  return fetch(COPY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function () { return "sent"; }, function () { return "failed"; });
-}
 function makeIt() {
   var msg = $("saPdfMsg"); if (!S.agree) { msg.textContent = "Tick the box first."; return; }
   msg.textContent = "Building your PDF..."; deriveLines();
-  var A = SA.audit(S);
   sha(JSON.stringify([S.biz, S.objs, S.tm, S.plan && S.plan.strats, S.checked])).then(function (h) {
     var code = (h || String(Date.now())).slice(0, 10).toUpperCase(), S2 = JSON.parse(JSON.stringify(S)); S2.code = code;
     return window.SA_PDF(S2, IMG).then(function (res) {
-      msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Sending the copy to your lecturer...";
-      showModal("Sending a copy to you and your lecturer...");
-      return sendCopy(res, code, A).then(function (st) {
-        $("saModalMail").textContent = st === "sent" ? "A copy has also been emailed to you and sent to your lecturer (check Junk if you do not see it)." : "The email copy could not be sent. Keep the downloaded file and send it to your lecturer yourself.";
-        msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. " + (st === "sent" ? "A copy was sent to your lecturer and to your student email (check Junk if you do not see it). Submission code " + code + "." : "The copy to your lecturer could not be sent. Email the PDF to your lecturer yourself. Submission code " + code + ".");
-      });
+      msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself. Submission code " + code + ".";
+      showModal("Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself.");
     });
   }).catch(function (e) { msg.textContent = "The PDF could not be made: " + (e && e.message ? e.message : e); if (window.console) console.warn(e); });
 }

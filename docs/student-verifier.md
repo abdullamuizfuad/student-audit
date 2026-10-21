@@ -1,5 +1,7 @@
 # Student verification landing page: how it was built, and how to build another
 
+> **Update, October 2026:** the Google Apps Script check below no longer works. Google blocks outside visitors on the Islandeative account ("Sorry, unable to open the file at this time"). The landing page now checks the ID against `roster.js`, which holds scrambled IDs only. To update it, run `python3 tools/build-roster.py <class list .xls or .csv>` and push `roster.js`. Never commit the class list file. The rest of this page is kept for reference.
+
 This explains the sign-in page in front of the MKT303 Student Audit tool (https://abdullamuizfuad.github.io/student-audit/), and gives a ready brief for a new chat to build the same kind of verifier for another tool.
 
 ---

@@ -1,0 +1,6 @@
+.DS_Store
+# class lists hold names and IDs: never commit them
+*.xls
+*.xlsx
+*.csv
+__pycache__/
