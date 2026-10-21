@@ -179,6 +179,7 @@ function build(S, IMG, fonts, logo, dims) {
     TM.segs.map(function (g) { var at = g.att || {}; return [{ t: g.name, b: true }, SA.segText(g, S.biz.type), SA.ATT.map(function (x) { return at[x.k] !== undefined && at[x.k] !== "" ? x.o[+at[x.k]] : "-"; }).join("; "), { t: SA.segScore(g) + "/12\n" + (g.target === "yes" ? "Target" : "Not a target"), b: true, c: g.target === "yes" ? COL.good : MUT }]; }), { zebra: true, size: 7.8 });
   TM.segs.forEach(function (g) { para(g.name + ". " + SA.segReason(g) + (g.fact ? " Fact: " + String(g.fact).trim().replace(/([^.!?])$/, "$1.") : "") + " Based on: " + (SA.picks(g.basis, SA.BASIS).join(", ") || "-") + ".", { size: 8.8, gap: 1.8 }); });
   y += 2;
+  room(112);
   head("2. Positioning");
   var stmt = SA.posText(S);
   fill([246, 249, 251]); F("fb", 10, INK); var sl = split(stmt, CW - 10); room(sl.length * lh(10) + 10); doc.roundedRect(M, y - 4.5, CW, sl.length * lh(10) + 7, 3, 3, "F"); F("fb", 10, INK); tx(sl.join("\n"), M + 5, y + 0.5); y += sl.length * lh(10) + 9;
@@ -292,7 +293,6 @@ function build(S, IMG, fonts, logo, dims) {
   });
   room(36); h3("Total");
   table([{ w: 136, h: "" }, { w: 38, h: "MVR", al: "r" }], [["All strategies", f0(B.sub)], ["Contingency (" + B.cp + "% for price changes and surprises)", f0(B.cont)], [{ t: "Total 12-month budget", b: true }, { t: f0(B.total), b: true }], ["Average per month", f0(B.total / 12)]]);
-  if (S.plan.defend) para("Is the budget defensible? " + (S.plan.defend === "yes" ? "The student says yes" : "The student chose to keep it, though it will be harder to defend") + (SA.chosen(S.plan.defwhy).length ? ": " + SA.chosen(S.plan.defwhy).join("; ").toLowerCase() + "." : ".") + " At about MVR " + f0(B.total / 12) + " a month, the rule of thumb of 5% to 10% of sales means the business would need sales of about MVR " + f0(B.total / 12 * 10) + " to " + f0(B.total / 12 * 20) + " a month.", { size: 9, bold: S.plan.defend === "anyway", col: S.plan.defend === "anyway" ? COL.bad : INK });
 
   doc.addPage(); y = TOP;
   head("Monthly budget", "Each activity's cost placed in the month it is paid.");
@@ -301,6 +301,7 @@ function build(S, IMG, fonts, logo, dims) {
   mrows.push([{ t: "Contingency", b: true }].concat(B.contM.map(function (v) { return v ? f0(v) : "-"; })).concat([{ t: f0(B.cont), b: true }]));
   mrows.push([{ t: "Total", b: true }].concat(B.monthly.map(function (v, i) { return { t: f0(v + B.contM[i]), b: true }; })).concat([{ t: f0(B.total), b: true }]));
   table(mc, mrows, { size: 6 });
+  if (S.plan.defend) { h3("Is the budget defensible?"); para((S.plan.defend === "yes" ? "The student says yes" : "The student chose to keep it, though it will be harder to defend") + (SA.chosen(S.plan.defwhy).length ? ": " + SA.chosen(S.plan.defwhy).join("; ").toLowerCase() + "." : ".") + " At about MVR " + f0(B.total / 12) + " a month, the rule of thumb of 5% to 10% of sales means the business would need sales of about MVR " + f0(B.total / 12 * 10) + " to " + f0(B.total / 12 * 20) + " a month.", { size: 9, bold: S.plan.defend === "anyway", col: S.plan.defend === "anyway" ? COL.bad : INK }); }
   h3("How these figures were worked out");
   bullets([
     "Price list items use Islandeative's published prices for the task (MVR). Where 4 or more of one monthly item are bought, 15% is taken off, as on the price list.",
