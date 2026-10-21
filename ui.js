@@ -504,7 +504,9 @@ function deriveLines() {
       var v = sel[a.id]; if (!v || !v.on) return;
       var f = v.f || a.f[0], st = SA.clamp(+v.st || 1, 1, 12), unit = a.basis === "At cost" && a.amt ? +(v.amt || a.unit) : a.basis === "Market 2026" ? (SA.num(v.quote) != null ? SA.num(v.quote) : a.unit) : a.unit;
       var l = { s: s.id, a: a.id, name: a.n, basis: a.basis, unit: unit, qty: a.count ? +(v.n || a.count[0]) : 1, disc: !!a.disc, season: !!a.season && f === "month", start: st, end: 12, f: f };
-      if (f === "once") { l.kind = "oneoff"; l.end = st; }
+      var pay = f === "once" && unit * l.qty >= 2000 ? +(v.pay || 1) : 1;
+      if (f === "once" && pay > 1) { var ms = []; for (var mm = st; mm <= Math.min(12, st + pay - 1); mm++) ms.push(mm); l.kind = "months"; l.months = ms; l.unit = Math.round(unit * l.qty / ms.length); l.qty = 1; l.end = ms[ms.length - 1]; l.name = a.n + " (paid over " + ms.length + " months)"; }
+      else if (f === "once") { l.kind = "oneoff"; l.end = st; }
       else if (f === "month") l.kind = "monthly";
       else if (f === "quarter") { l.kind = "every"; l.every = 3; }
       else { l.kind = "months"; l.months = lab.filter(function (m) { return m.i >= st && SA.isPeak(m.cal); }).map(function (m) { return m.i; }); if (!l.months.length) l.months = [st]; l.start = l.months[0]; l.end = l.months[l.months.length - 1]; }
@@ -558,11 +560,14 @@ function viewStrat(si) {
     var p = "plan.sel." + s.id + "." + a.id, v = sel[a.id] || {}, act = !!v.on;
     h += '<div class="sa-act' + (act ? " on" : "") + '"><button type="button" class="sa-acttg" data-tg="' + p + '.on" aria-pressed="' + act + '"><span class="nm">' + esc(a.n) + '</span><span class="pr">' + (a.basis === "Own time" ? "No cash cost" : a.basis === "At cost" && a.amt ? "Ad spend, paid at cost" : "MVR " + a.unit.toLocaleString("en-US") + (a.count ? " each" : a.f[0] === "month" && a.f.length === 1 ? " a month" : "")) + ' <i class="bs">' + BASIS_TXT[a.basis] + "</i></span></button>";
     if (act) {
-      h += '<div class="sa-actb">' + chips(p + ".f", 'How often? <span class="sa-pick">Pick one</span>', a.f.map(function (k) { return [k, SA.FREQ[k]]; }), { sm: true });
+      var fv = v.f || (a.f.length === 1 ? a.f[0] : "");
+      h += '<div class="sa-actb">' + (a.f.length > 1 ? chips(p + ".f", 'How often? <span class="sa-pick">Pick one</span>', a.f.map(function (k) { return [k, SA.FREQ[k]]; }), { sm: true }) : '<p class="sa-ms" style="margin-top:12px"><b>' + (a.f[0] === "once" ? "One-off" : SA.FREQ[a.f[0]]) + "</b></p>");
+      var tot1 = (a.basis === "Market 2026" && SA.num(v.quote) != null ? SA.num(v.quote) : a.unit) * (a.count ? +(v.n || a.count[0]) : 1);
+      if (fv === "once" && tot1 >= 2000) h += chips(p + ".pay", 'Spread the cost <span class="sa-pick">Pick one</span>', [["1", "Pay at once"], ["3", "Over 3 months"], ["6", "Over 6 months"]], { sm: true, tip: "Bigger set-up costs are often paid in stages, for example a deposit and then payments as the work is done." });
       if (a.count) h += chips(p + ".n", (v.f === "once" ? "How many?" : "How many each time?") + ' <span class="sa-pick">Pick one</span>', a.count.map(function (n) { return [String(n), String(n)]; }), { sm: true });
       if (a.amt) h += chips(p + ".amt", 'How much each time? <span class="sa-pick">Pick one</span>', a.amt.map(function (n) { return [String(n), "MVR " + n.toLocaleString("en-US")]; }), { sm: true });
       if (a.basis === "Market 2026") h += '<div class="sa-grid">' + txt(p + ".quote", "Your quote (MVR)", { opt: true, mode: "numeric", ph: "estimate: " + a.unit.toLocaleString("en-US"), hint: "Leave empty to use the 2026 market estimate. Put a real quote here if you get one." }) + "</div>";
-      if ((v.f || a.f[0]) !== "peak") h += '<div class="f sa-start"><label for="st_' + s.id + a.id + '">Starts in</label><select id="st_' + s.id + a.id + '" data-p="' + p + '.st" data-re="1">' + lab.map(function (m) { return '<option value="' + m.i + '"' + ((+v.st || 1) === m.i ? " selected" : "") + ">" + m.label + "</option>"; }).join("") + "</select></div>";
+      if ((v.f || a.f[0]) !== "peak") h += '<div class="f sa-start"><label for="st_' + s.id + a.id + '">' + (fv === "once" ? "When" : "Starts in") + '</label><select id="st_' + s.id + a.id + '" data-p="' + p + '.st" data-re="1">' + lab.map(function (m) { return '<option value="' + m.i + '"' + ((+v.st || 1) === m.i ? " selected" : "") + ">" + m.label + "</option>"; }).join("") + "</select></div>";
       h += "</div>";
     }
     h += "</div>";
@@ -599,7 +604,7 @@ function vPlan() {
     var acts = SA.actsFor(s.id, S).filter(function (a) { return (sel[a.id] || {}).on; });
     if (!acts.length) e.push(s.name + ": pick at least one activity.@@plan.sel." + s.id);
     acts.forEach(function (a) { var v = sel[a.id], p = "plan.sel." + s.id + "." + a.id;
-      if (!v.f) e.push(s.name + ": choose how often for \"" + a.n + "\".@@" + p + ".f");
+      if (!v.f && a.f.length > 1) e.push(s.name + ": choose how often for \"" + a.n + "\".@@" + p + ".f");
       if (a.count && !v.n) e.push(s.name + ": choose how many for \"" + a.n + "\".@@" + p + ".n");
       if (a.amt && !v.amt) e.push(s.name + ": choose how much for \"" + a.n + "\".@@" + p + ".amt"); });
   });
