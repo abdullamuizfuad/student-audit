@@ -17,14 +17,50 @@ function loadLogo() {
 function imgSize(src) { return new Promise(function (res) { var i = new Image(); i.onload = function () { res({ w: i.width, h: i.height }); }; i.onerror = function () { res(null); }; i.src = src; }); }
 function safe(s) { return String(s == null ? "" : s).replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\n -~ -ÿ]/g, ""); }
 
-window.SA_PDF = function (S, IMG) {
+/* Saves the PDF with the student's answers tucked in after the end of the file, so the tool can reload it later. */
+function saveWithData(doc, nm, embed) {
+  var buf = new Uint8Array(doc.output("arraybuffer")), extra = new Uint8Array(0);
+  if (embed) extra = new TextEncoder().encode("\n%IASA-DATA:" + embed + "\n%IASA-END\n");
+  var all = new Uint8Array(buf.length + extra.length); all.set(buf); all.set(extra, buf.length);
+  var url = URL.createObjectURL(new Blob([all], { type: "application/pdf" })), a = document.createElement("a");
+  a.href = url; a.download = nm; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  return all;
+}
+window.SA_PDF = function (S, IMG, opts) {
   return Promise.all([loadFonts(), loadLogo(), Promise.all(Object.keys(IMG || {}).map(function (k) { return imgSize(IMG[k]).then(function (d) { return [k, d]; }); }))]).then(function (r) {
     var dims = {}; r[2].forEach(function (x) { dims[x[0]] = x[1]; });
-    return build(S, IMG || {}, r[0], r[1], dims);
+    return build(S, IMG || {}, r[0], r[1], dims, opts || {});
+  });
+};
+/* Progress report: a short draft PDF that carries the student's answers so they can continue later. */
+window.SA_PROGRESS_PDF = function (S, steps, embed) {
+  return Promise.all([loadFonts(), loadLogo()]).then(function (r) {
+    var fonts = r[0], logo = r[1], J = window.jspdf.jsPDF, doc = new J({ unit: "mm", format: "a4", compress: true }), M = 18, W = 210, CW = W - 2 * M, y = 30, ok = false;
+    try { doc.addFileToVFS("ax.ttf", fonts.ax); doc.addFont("ax.ttf", "Archivo", "bolditalic"); doc.addFileToVFS("fr.ttf", fonts.fr); doc.addFont("fr.ttf", "Figtree", "normal"); doc.addFileToVFS("fb.ttf", fonts.fb); doc.addFont("fb.ttf", "Figtree", "bold"); ok = !!(fonts.ax && fonts.fr && fonts.fb); } catch (e) {}
+    function F(k, sz, c) { if (ok) doc.setFont(k === "ax" ? "Archivo" : "Figtree", k === "ax" ? "bolditalic" : k === "fb" ? "bold" : "normal"); else doc.setFont("helvetica", k === "fr" ? "normal" : "bold"); doc.setFontSize(sz); doc.setTextColor(c[0], c[1], c[2]); }
+    var INK = [29, 43, 52], MUT = [99, 113, 124], ACC = [36, 85, 130], OK = [46, 139, 87], tx = function (s, x, yy, o) { doc.text(safe(s), x, yy, o); };
+    if (logo) { try { doc.addImage(logo, "PNG", M, 8, 13, 13 * 371 / 420, undefined, "FAST"); } catch (e) {} }
+    F("fb", 8.5, ACC); tx("Islandeative  |  Student audit", M + 16, 15);
+    doc.setFillColor(253, 240, 205); doc.roundedRect(M, y - 6, CW, 12, 3, 3, "F"); F("fb", 10, [120, 82, 4]); tx("PROGRESS REPORT (DRAFT): NOT FOR SUBMISSION", M + 5, y + 1.6); y += 16;
+    F("ax", 22, INK); tx(S.biz.name || "Business not named yet", M, y); y += 9;
+    F("fr", 10, MUT); tx("Saved by " + (S.biz.student || "") + "  |  " + (S.biz.sid || "") + "  |  " + new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }), M, y); y += 12;
+    F("fb", 12, INK); tx("Where you are", M, y); y += 8;
+    steps.forEach(function (s) {
+      doc.setDrawColor(214, 222, 228); doc.setFillColor(s.state === "done" ? OK[0] : s.state === "now" ? 58 : 255, s.state === "done" ? OK[1] : s.state === "now" ? 192 : 255, s.state === "done" ? OK[2] : s.state === "now" ? 192 : 255); doc.circle(M + 3, y - 1.4, 2.2, "FD");
+      F(s.state === "now" ? "fb" : "fr", 10, s.state === "todo" ? MUT : INK); tx(s.name + (s.state === "now" ? "  (continue here)" : ""), M + 9, y); y += 7.2;
+    });
+    y += 4; if (S._score != null) { F("fb", 11, INK); tx("Digital visibility score so far: " + S._score + "/100", M, y); y += 10; }
+    F("fb", 12, INK); tx("How to continue", M, y); y += 7;
+    F("fr", 10, INK);
+    ["1. Open the Student Audit tool and sign in with the same student ID.", "2. Press \"Open saved\" at the top of the page and choose this file.", "3. The tool opens at the step where you stopped, with your answers and screenshots.", "", "Keep this file as you downloaded it. If you open and save it in another program, it may no longer load.", "This draft is not your report. When you finish, download the final PDF from the last step."].forEach(function (l) { var ln = doc.splitTextToSize(safe(l), CW); tx(ln.join("\n"), M, y); y += ln.length * 5.2 + (l ? 1 : 2); });
+    var nm = "Progress_" + safe(S.biz.name || "audit").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30) + "_" + new Date().toISOString().slice(0, 10) + ".pdf";
+    saveWithData(doc, nm, embed);
+    return { name: nm };
   });
 };
 
-function build(S, IMG, fonts, logo, dims) {
+function build(S, IMG, fonts, logo, dims, opts) {
   var J = window.jspdf.jsPDF, doc = new J({ unit: "mm", format: "a4", compress: true }), W = 210, M = 18, CW = W - 2 * M, y = 24, TOP = 24, BOT = 277;
   var fontsOk = false;
   try {
@@ -393,7 +429,7 @@ function build(S, IMG, fonts, logo, dims) {
     F("fb", 8, INK); tx(p + " / " + n, W - M, 289, { align: "right" });
   }
   var nm = "Audit_" + safe(S.biz.name).replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30) + "_" + S.biz.checked + ".pdf";
-  doc.save(nm);
+  saveWithData(doc, nm, opts && opts.embed);
   return { pages: n, name: nm, doc: doc };
 }
 })();

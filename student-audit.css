@@ -290,3 +290,14 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}
 .sa-modal-box p,.sa-modal-box li{font-size:.97rem}
 .sa-modal-box ul{padding-inline-start:20px;margin:0 0 12px}
 .sa-modal-box .btn{width:100%;justify-content:center;margin-top:6px}
+/* save and open progress */
+.sa-top-in{gap:10px}
+.sa-tools{display:flex;gap:8px;margin-inline-start:auto}
+.sa-toolbtn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+.sa-toolbtn:hover{border-color:var(--teal)}
+.sa-toolbtn .ico{width:18px;height:18px}
+.sa-toolbtn:disabled{opacity:.5;cursor:wait}
+@media(max-width:520px){.sa-toolbtn span{display:none}.sa-toolbtn{width:40px;padding:0;justify-content:center}}
+.sa-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;width:min(520px,calc(100% - 32px));padding:14px 18px;border-radius:16px;background:var(--navy);color:#fff;font-weight:600;font-size:.93rem;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+[data-theme="dark"] .sa-toast{background:var(--teal);color:#06202F}
+.sa-welcome{border-inline-start-color:var(--green)}

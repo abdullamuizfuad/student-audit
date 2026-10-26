@@ -12,7 +12,13 @@ function blank() {
 }
 var ME = (function () { try { return JSON.parse(localStorage.getItem("ia-student") || sessionStorage.getItem("ia-student") || "null") || {}; } catch (e) { return {}; } })();
 function stamp(st) { st.biz.student = ME.name || st.biz.student || ""; st.biz.sid = ME.sid || st.biz.sid || ""; st.biz.email = ME.email || ""; return st; }
-var S = stamp(blank()), IMG = {}; // IMG holds screenshots in memory only
+var S = stamp(blank()), IMG = {}, RESUMED = false; // IMG holds screenshots; also kept in this browser (IndexedDB) so they survive a reload
+/* small IndexedDB store for screenshots */
+function idb() { return new Promise(function (res, rej) { if (!window.indexedDB) { rej(); return; } var r = indexedDB.open("ia-student-audit", 1); r.onupgradeneeded = function () { r.result.createObjectStore("kv"); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(); }; }); }
+function idbSet(k, v) { return idb().then(function (db) { return new Promise(function (res) { var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); }).catch(function () {}); }
+function idbGet(k) { return idb().then(function (db) { return new Promise(function (res) { var q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(null); }; }); }).catch(function () { return null; }); }
+function imgKey() { return "img-" + (ME.sid || "anon"); }
+function saveImgs() { idbSet(imgKey(), IMG); }
 
 function save() { try { var c = JSON.parse(JSON.stringify(S)); localStorage.setItem(DRAFT, JSON.stringify(c)); } catch (e) {} }
 function load() { try { var r = localStorage.getItem(DRAFT); if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; return true; } } } catch (e) {} return false; }
@@ -493,6 +499,10 @@ function vObj() {
 }
 
 /* ---------- step 9: strategies, Gantt, budget ---------- */
+function refreshPlanRec() {
+  if (!S.plan || !S.plan.strats) return; var M = modelStuff();
+  S.plan.strats.forEach(function (s) { var m = M.plan.strats.filter(function (x) { return x.id === s.id; })[0]; if (m) { s.why = m.why; s.rec = !!m.on; } });
+}
 function ensurePlan() {
   if (S.plan && S.plan.cfg) return;
   var M = modelStuff();
@@ -679,6 +689,7 @@ function errPage(step, path) {
 }
 function vPage(step) { var cur = +(S.sub || {})[step] || 0; return VALID[step]().filter(function (x) { return errPage(step, String(x).split("@@")[1]) === cur; }); }
 
+function missingShots() { var A = SA.audit(S); return A.rep.plats.filter(function (p) { return p.status === "listed" && !IMG[p.id]; }).map(function (p) { return p.name; }); }
 /* ---------- step 11: download ---------- */
 function viewDone() {
   var A = SA.audit(S), B = SA.budget(S.plan, S.biz), nseg = S.tm.segs.filter(function (g) { return g.target === "yes"; }).length;
@@ -687,6 +698,7 @@ function viewDone() {
     '<div class="sa-card"><p><b>' + esc(S.biz.name) + "</b>: digital visibility " + A.overall + "/100. " + S.objs.length + " objectives, " + S.plan.strats.filter(function (s) { return s.on; }).length + " strategies, " + nseg + " persona" + (nseg === 1 ? "" : "s") + ", total budget MVR " + Math.round(B.total).toLocaleString("en-US") + '.</p>' +
     '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I will attach this PDF to my assignment document as an appendix before I submit, and keep a copy for myself.</label>" +
     '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saPdf"' + (S.agree ? "" : " disabled") + '>Download PDF</button><button type="button" class="btn btn-ghost" id="saEdit2">Back to the plan</button><button type="button" class="btn btn-ghost" id="saNew">Start another audit</button></div><p class="sa-ms" id="saPdfMsg" role="status"></p></div>' +
+    (missingShots().length ? '<div class="sa-note"><b>Screenshots missing:</b> ' + esc(missingShots().join(", ")) + '. They are not saved on this device, so the evidence appendix will be empty for them. <button type="button" class="sa-btn-s" id="saGoRev">Upload them in Reviews</button></div>' : "") +
     '<div class="sa-note">Use of AI: your report must state honestly how you used AI, including this tool. The PDF is evidence and structure, and the explanations, justifications, theory and references in your report must be your own work.</div>';
 }
 
@@ -695,8 +707,9 @@ var VIEW = [viewBiz, viewSocial, viewGbp, viewSite, viewRep, viewResults, viewTm
 var VALID = [vBiz, vSocial, vGbp, vSite, vRep, function () { return []; }, vTm, vObj, vPlan, vCtl, function () { return []; }];
 function stepsSkip(i, dir) { return i; }
 
+var NOTICE = "";
 function render(keepScroll) {
-  var i = S.step; $("saStep").innerHTML = VIEW[i]();
+  var i = S.step; $("saStep").innerHTML = (NOTICE ? '<div class="sa-note sa-welcome">' + esc(NOTICE) + "</div>" : "") + VIEW[i]();
   $("saBar").style.transform = "scaleX(" + ((i + 1) / STEPS.length) + ")";
   var pl = pagesFor(i) ? pageLabel(i) : "";
   $("saStepNo").textContent = "Step " + (i + 1) + " of " + STEPS.length + ": " + STEPS[i] + (pl ? " (" + pl + ")" : "");
@@ -712,7 +725,7 @@ function render(keepScroll) {
   if (!keepScroll) { window.scrollTo({ top: 0, behavior: "instant" }); $("saStep").focus({ preventScroll: true }); }
   save();
 }
-function go(n) { S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+function go(n) { NOTICE = ""; S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
 function showErr(e) {
   $("saErr").innerHTML = (e.length > 1 ? '<li class="sa-err-h">Tap an item to jump to it.</li>' : "") + e.slice(0, 10).map(function (x) { var p = String(x).split("@@"); return p[1] ? '<li><button type="button" class="sa-errgo" data-go="' + esc(p[1]) + '">' + esc(p[0]) + "</button></li>" : "<li>" + esc(p[0]) + "</li>"; }).join("") + (e.length > 10 ? "<li>And " + (e.length - 10) + " more.</li>" : "");
 }
@@ -731,7 +744,7 @@ $("saNext").addEventListener("click", function () {
   var st = S.step, P = pagesFor(st);
   if (P) { var pe = vPage(st); if (pe.length) { showErr(pe); return; } var ci = +(S.sub || {})[st] || 0; if (ci < P.length - 1) { setSub(st, ci + 1); render(); return; } }
   var e = VALID[st](); if (e.length) { showErr(e); return; }
-  if (st === 5) { setSub(6, 0); S.plan = null; S.model = null; }
+  if (st === 5) { if (!S.tm) setSub(6, 0); S.model = null; refreshPlanRec(); }
   var nx = st + 1; if (pagesFor(nx)) setSub(nx, 0);
   go(nx);
 });
@@ -754,10 +767,10 @@ document.addEventListener("click", function (ev) {
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
   if (t.dataset.gost !== undefined) { setSub(8, stPages().indexOf("st:" + t.dataset.gost)); render(); return; }
   if (t.dataset.sub !== undefined) { setSub(S.step, +t.dataset.sub); render(); return; }
-  if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; S.plan = null; render(true); return; }
+  if (t.dataset.p === "biz.group") { var gv = t.dataset.v; S.biz.group = gv; var tt = SA.TBY[S.biz.type]; if (gv !== "travel") S.biz.type = gv; else if (!tt || tt.group !== "travel") S.biz.type = ""; S.model = null; render(true); return; }
   if (t.id === "saNone") { S.site.subs = { linkhub: "n", wa: "n", book: "n", found: "n" }; render(true); return; }
   if (t.dataset.p && /^objs\.\d+\.kpi$/.test(t.dataset.p)) { var oi = +t.dataset.p.split(".")[1], ob = S.objs[oi], kk = (SA.KPIS[ob.type] || []).filter(function (k) { return k[0] === t.dataset.v; })[0]; ob.kpi = t.dataset.v; if (kk) ob.unit = kk[1]; render(true); return; }
-  if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; S.plan = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
+  if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
   if (t.dataset.tg) { var tp = t.dataset.tg; if (t.dataset.max && !getp(tp)) { var par = tp.slice(0, tp.lastIndexOf(".")); if (SA.chosen(getp(par)).length >= +t.dataset.max) { showErr(["Pick up to " + t.dataset.max + ". Untick one first."]); return; } } setp(tp, !getp(tp)); render(true); return; }
   if (t.id === "saAddSeg") { ensureTm(); S.tm.segs.push(newSeg()); render(true); return; }
@@ -765,7 +778,8 @@ document.addEventListener("click", function (ev) {
   if (t.id === "saEdit2") { setSub(8, stPages().length - 1); go(8); return; }
   if (t.dataset.rm !== undefined) { S.objs.splice(+t.dataset.rm, 1); render(); return; }
   if (t.id === "saPdf") { makeIt(); return; }
-  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = stamp(blank()); IMG = {}; try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
+  if (t.id === "saGoRev") { go(4); return; }
+  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = stamp(blank()); IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
 });
 function onChange(ev) {
   var t = ev.target;
@@ -800,7 +814,7 @@ function shot(inp) {
       var w = im.width, h = im.height, m = 1000, k = Math.min(1, m / Math.max(w, h)), c = document.createElement("canvas");
       c.width = Math.round(w * k); c.height = Math.round(h * k);
       var cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
-      IMG[id] = c.toDataURL("image/jpeg", 0.72); render(true);
+      IMG[id] = c.toDataURL("image/jpeg", 0.72); saveImgs(); render(true);
     };
     im.onerror = function () { showErr(["That file could not be read as an image. Try a PNG or JPG screenshot."]); };
     im.src = fr.result;
@@ -812,6 +826,33 @@ function showModal(mailMsg) { var m = $("saModal"); $("saModalMail").textContent
 $("saModalClose").addEventListener("click", function () { $("saModal").hidden = true; var b = $("saPdf"); if (b) b.focus(); });
 $("saModal").addEventListener("click", function (ev) { if (ev.target.id === "saModal") $("saModal").hidden = true; });
 document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("saModal").hidden) $("saModal").hidden = true; });
+/* save progress and open a saved report */
+function toB64(str) { var b = new TextEncoder().encode(str), s = ""; for (var i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); }
+function fromB64(b64) { var s = atob(b64), b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return new TextDecoder().decode(b); }
+function payload() { return toB64(JSON.stringify({ v: 1, sid: S.biz.sid, saved: new Date().toISOString(), state: S, img: IMG })); }
+function stepList() { return STEPS.map(function (n, i) { return { name: (i + 1) + ". " + n, state: i < S.step ? "done" : i === S.step ? "now" : "todo" }; }); }
+function saveProgress() {
+  var b = $("saSaveP"); b.disabled = true; var S2 = JSON.parse(JSON.stringify(S)); try { if (S.step >= 5) S2._score = SA.audit(S).overall; } catch (e) {}
+  window.SA_PROGRESS_PDF(S2, stepList(), payload()).then(function () { b.disabled = false; toast("Progress saved as a PDF in your downloads. To continue later, sign in and press Open saved."); }, function (e) { b.disabled = false; toast("Could not save: " + (e && e.message ? e.message : e)); });
+}
+function openSaved(file) {
+  var fr = new FileReader();
+  fr.onload = function () {
+    var txt = new TextDecoder("latin1").decode(new Uint8Array(fr.result)), a = txt.lastIndexOf("%IASA-DATA:"), b = txt.indexOf("%IASA-END", a);
+    if (a < 0 || b < 0) { toast("This file has no saved answers. Choose a progress report or final report downloaded from this tool, without editing it."); return; }
+    var d; try { d = JSON.parse(fromB64(txt.slice(a + 11, b).trim())); } catch (e) { toast("This file could not be read. It may have been changed by another program."); return; }
+    if (!d || !d.state || !d.state.biz) { toast("This file could not be read."); return; }
+    if (String(d.sid || "").toUpperCase() !== String(ME.sid || "").toUpperCase()) { toast("This report was saved under another student ID, so it cannot be opened here."); return; }
+    if (!confirm("Open this saved report? It replaces the answers in the tool now.")) return;
+    S = stamp(d.state); IMG = d.img || {}; saveImgs(); delete S.tsub; NOTICE = "Saved report opened. You are back on step " + (S.step + 1) + ": " + STEPS[S.step] + "."; render(); toast("Saved report opened.");
+  };
+  fr.readAsArrayBuffer(file);
+}
+var TOASTT = null;
+function toast(m) { var t = $("saToast"); t.textContent = m; t.hidden = false; clearTimeout(TOASTT); TOASTT = setTimeout(function () { t.hidden = true; }, 6000); }
+$("saSaveP").addEventListener("click", saveProgress);
+$("saOpenP").addEventListener("click", function () { $("saFile").value = ""; $("saFile").click(); });
+$("saFile").addEventListener("change", function () { if (this.files && this.files[0]) openSaved(this.files[0]); });
 /* PDF */
 function sha(str) {
   if (!window.crypto || !crypto.subtle) return Promise.resolve("");
@@ -822,7 +863,7 @@ function makeIt() {
   msg.textContent = "Building your PDF..."; deriveLines();
   sha(JSON.stringify([S.biz, S.objs, S.tm, S.plan && S.plan.strats, S.checked])).then(function (h) {
     var code = (h || String(Date.now())).slice(0, 10).toUpperCase(), S2 = JSON.parse(JSON.stringify(S)); S2.code = code;
-    return window.SA_PDF(S2, IMG).then(function (res) {
+    return window.SA_PDF(S2, IMG, { embed: payload() }).then(function (res) {
       msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself. Submission code " + code + ".";
       showModal("Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself.");
     });
@@ -836,7 +877,9 @@ $("saTheme").addEventListener("click", function () {
 });
 $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
-window.SA_SET = function (st, img) { S = st; IMG = img || {}; render(); };
-if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); if (S.step > 5) S.step = 5; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
+window.SA_SET = function (st, img) { S = st; if (img !== undefined) IMG = img || {}; render(); };
+if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
+if (RESUMED) NOTICE = "Welcome back. Your answers were saved on this device, so you are back on step " + (S.step + 1) + ": " + STEPS[S.step] + ". Press Save progress at the top to keep a copy you can open on another device.";
 render();
+idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
 })();

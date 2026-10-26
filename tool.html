@@ -14,12 +14,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,100..125,400..900;1,100..125,400..900&family=Figtree:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/site.css">
 <link rel="stylesheet" href="assets/logo-loop.css?v=1">
-<link rel="stylesheet" href="student-audit.css?v=9">
+<link rel="stylesheet" href="student-audit.css?v=10">
 </head>
 <body>
 <header class="sa-top">
   <div class="wrap sa-top-in">
     <a class="sa-logo" href="index.html" aria-label="Student audit home"><img src="assets/logo.png" alt="" width="34" height="30"><span class="sa-brand">Student audit</span></a>
+    <div class="sa-tools"><button type="button" class="sa-toolbtn" id="saSaveP" title="Download a progress report you can open later to continue"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></svg><span>Save progress</span></button><button type="button" class="sa-toolbtn" id="saOpenP" title="Continue from a progress report or final report you saved"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></svg><span>Open saved</span></button><input type="file" id="saFile" accept="application/pdf,.pdf" hidden></div>
     <button class="sa-theme" id="saTheme" type="button" aria-label="Switch light or dark mode"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23Z"/></svg></button>
   </div>
 </header>
@@ -43,6 +44,7 @@
     <span class="sa-nav-r"><button type="button" class="btn btn-ghost" id="saAddSegNav" hidden>Add segment</button><button type="button" class="btn btn-primary" id="saNext">Next</button></span>
   </div>
 </main>
+<div class="sa-toast" id="saToast" role="status" hidden></div>
 <div class="sa-modal" id="saModal" hidden role="dialog" aria-modal="true" aria-labelledby="saModalH">
   <div class="sa-modal-box">
     <h2 id="saModalH">Your report is downloading</h2>
@@ -62,8 +64,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="core.js?v=11" defer></script>
-<script src="pdf.js?v=13" defer></script>
+<script src="pdf.js?v=14" defer></script>
 <script src="assets/logo-loop.js?v=2" defer></script>
-<script src="ui.js?v=21" defer></script>
+<script src="ui.js?v=22" defer></script>
 </body>
 </html>
