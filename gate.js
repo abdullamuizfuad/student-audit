@@ -5,7 +5,7 @@
   var n = $("gName"), id = $("gId"), mail = $("gMail"), mt = $("gMailTxt"), go = $("gGo"), err = $("gErr");
   var KEY = "ia-student";
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  try { var s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && s.sid) { n.value = s.name || ""; id.value = String(s.sid).slice(1); } } catch (e) {}
+  /* Name and ID are not filled in from last time: on a shared computer the next student must not see them. */
   function check() {
     var d = id.value.replace(/\D/g, "").slice(0, 6); if (id.value !== d) id.value = d;
     mt.innerHTML = "s" + esc(d) + (d.length < 6 ? "<i>" + "0xxxxx".slice(d.length) + "</i>" : "") + "@student.mnu.edu.mv";
