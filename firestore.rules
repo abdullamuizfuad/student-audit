@@ -13,7 +13,8 @@ service cloud.firestore {
         && exists(/databases/$(db)/documents/roster/$(sid));
     }
 
-    // Class list: one document per student ID, for example roster/S000001. Only the lecturer can see the list.
+    // Class list: one document per student ID in small letters, for example roster/s000001. Only the lecturer can see the list.
+    // All document IDs (roster, progress, submissions) use the small-letter ID, the same as the email: s000001@student.mnu.edu.mv.
     match /roster/{sid} {
       allow get: if isStudent(sid) || isAdmin();
       allow list, write: if isAdmin();

@@ -1,0 +1,4 @@
+Firebase JavaScript SDK 10.12.2 (compat builds: app, auth, firestore)
+Copyright Google LLC
+Licensed under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+Source: https://github.com/firebase/firebase-js-sdk

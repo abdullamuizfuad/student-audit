@@ -1,4 +1,4 @@
-/* Islandeative Student Audit: screens. Answers stay on the student device: kept in this browser per student ID, and inside the PDFs the student downloads. Nothing is sent anywhere. */
+/* Islandeative Student Audit: screens. Answers are kept in this browser per student ID and saved to the student's Firebase account (cloud.js), which only the student and the lecturer can read. */
 (function () {
 "use strict";
 var SA = window.SA, $ = function (id) { return document.getElementById(id); };
@@ -19,9 +19,23 @@ function idb() { return new Promise(function (res, rej) { if (!window.indexedDB)
 function idbSet(k, v) { return idb().then(function (db) { return new Promise(function (res) { var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); }).catch(function () {}); }
 function idbGet(k) { return idb().then(function (db) { return new Promise(function (res) { var q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(null); }; }); }).catch(function () { return null; }); }
 function imgKey() { return "img-" + (ME.sid || "anon"); }
-function saveImgs() { idbSet(imgKey(), IMG); }
+var CLOUD = !!(window.SAC && SAC.ok && ME.cloud && ME.sid), CT = null, SENT = {};
+function cloudMsg(t, bad) { var el = $("saCloud"); if (el) { el.textContent = t; el.classList.toggle("bad", !!bad); } }
+function cloudSave() {
+  if (!CLOUD) return; clearTimeout(CT); cloudMsg("Saving...");
+  CT = setTimeout(function () {
+    SAC.saveState(ME.sid, S, ME.name).then(function () { cloudMsg("Saved to your account"); }, function (e) { cloudMsg("Not saved yet: " + SAC.say(e) + " Your answers are kept on this device.", true); });
+  }, 1200);
+}
+function cloudImgs() {
+  if (!CLOUD) return;
+  Object.keys(IMG).forEach(function (k) { if (SENT[k] !== IMG[k].length) { SENT[k] = IMG[k].length; SAC.saveImg(ME.sid, k, IMG[k]).catch(function () { delete SENT[k]; }); } });
+  Object.keys(SENT).forEach(function (k) { if (!IMG[k]) { delete SENT[k]; SAC.saveImg(ME.sid, k, null).catch(function () {}); } });
+}
+function saveImgs() { idbSet(imgKey(), IMG); cloudImgs(); }
 
-function save() { try { var c = JSON.parse(JSON.stringify(S)); localStorage.setItem(DRAFT, JSON.stringify(c)); } catch (e) {} }
+var LOADED = false;
+function save() { if (!LOADED) return; S.savedAt = Date.now(); try { localStorage.setItem(DRAFT, JSON.stringify(S)); } catch (e) {} cloudSave(); }
 function load() { try { var r = localStorage.getItem(DRAFT);
   if (!r) { var old = localStorage.getItem(DRAFT_OLD), oo = old ? JSON.parse(old) : null; if (oo && oo.biz && oo.biz.sid && oo.biz.sid === ME.sid) { r = old; localStorage.setItem(DRAFT, old); localStorage.removeItem(DRAFT_OLD); } } if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; return true; } } } catch (e) {} return false; }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -60,7 +74,7 @@ function viewBiz() {
   return '<h1 class="sa-h">Audit a business\'s digital presence</h1>' +
     '<p class="sa-lede">You will check the business\'s social media, Google profile, website and reviews, using only what anyone can see in public. The tool scores each part by fixed rules. Then you build your own 12-month plan: target market, objectives, strategies and evaluation. The tool structures and costs it, and gives you one PDF as evidence.</p>' +
     '<div class="sa-note">Look at the real accounts while you answer, on a phone if you can. Pick "the business does not have it" when something is missing. That counts as a zero and shows up as a gap. Do not guess: choose "Can\'t tell" and the question is left out of the score.</div>' +
-    '<div class="sa-who"><span>Signed in as <b>' + esc(S.biz.student) + "</b></span><span>" + esc(S.biz.sid) + "</span><span>" + esc(S.biz.email) + '</span><a href="index.html" id="saOut">Not you? Sign out</a></div>' +
+    '<div class="sa-who"><span>Signed in as <b>' + esc(S.biz.student) + "</b></span><span>" + esc(S.biz.sid) + "</span><span>" + esc(S.biz.email) + '</span><a href="index.html?out=1" id="saOut">Not you? Sign out</a></div>' +
     '<div class="sa-card"><h3>The business</h3><div class="sa-grid">' + txt("biz.name", "Business name", { wide: true }) + "</div>" +
     chips("biz.group", "What kind of business is it?", G, { re: true }) +
     (grp === "travel" ? chips("biz.type", "Which kind of tourism business?", T, { re: true, tip: "Hotels are judged on the big booking sites. Dive centres are judged on review pages. Tour operators are not scored on reviews." }) : "") +
@@ -202,7 +216,7 @@ function repCard(pl, travel) {
     h += '<div class="sa-grid">' + txt(a + ".rating", "Rating shown (out of " + pl.scale + ")", { mode: "decimal" }) + txt(a + ".count", "Number of reviews", { mode: "numeric" }) +
       txt(a + ".lastDate", "Date of the newest review", { type: "date" }) + txt(a + ".replies", "How many of the 5 recent comments have an owner reply? (0 to 5)", { mode: "numeric" });
     h += "</div>";
-    h += '<h4>Screenshot <span class="cc-opt">(recommended)</span></h4><p class="sa-tip">Take a screenshot of the listing page showing the rating, review count and the browser address bar. It is shrunk, kept in this browser, and placed in your PDF appendix.</p>' +
+    h += '<h4>Screenshot <span class="cc-opt">(recommended)</span></h4><p class="sa-tip">Take a screenshot of the listing page showing the rating, review count and the browser address bar. It is shrunk, saved to your account, and placed in your PDF appendix.</p>' +
       '<div class="sa-shot"><input type="file" accept="image/*" data-shot="' + pl.id + '" aria-label="Screenshot for ' + pl.name + '">' + (IMG[pl.id] ? '<img src="' + IMG[pl.id] + '" alt="Screenshot of the ' + pl.name + ' listing">' : '<span class="sa-hint">No screenshot yet.</span>') + "</div>";
     h += "<h4>Recent comments <span class=\"cc-opt\">(recommended)</span></h4><p class=\"sa-tip\">Copy the date and the text of up to 5 newest reviews. Do not copy reviewer names. Type in English: Dhivehi letters do not show in the PDF, so your screenshot keeps the original. No reviews yet? Type 0 as the number of reviews and leave this empty.</p>";
     for (var i = 0; i < 5; i++) {
@@ -713,7 +727,7 @@ function viewDone() {
     '<div class="sa-card"><p><b>' + esc(S.biz.name) + "</b>: digital visibility " + A.overall + "/100. " + S.objs.length + " objectives, " + S.plan.strats.filter(function (s) { return s.on; }).length + " strategies, " + nseg + " persona" + (nseg === 1 ? "" : "s") + ", total budget MVR " + Math.round(B.total).toLocaleString("en-US") + '.</p>' +
     '<label class="sa-ck sa-agree"><input type="checkbox" id="saAgree" data-p="agree" data-bool="1"' + (S.agree ? " checked" : "") + "> I will attach this PDF to my assignment document as an appendix before I submit, and keep a copy for myself.</label>" +
     '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saPdf"' + (S.agree ? "" : " disabled") + '>Download PDF</button><button type="button" class="btn btn-ghost" id="saEdit2">Back to the plan</button><button type="button" class="btn btn-ghost" id="saNew">Start another audit</button></div><p class="sa-ms" id="saPdfMsg" role="status"></p>' +
-    '<p class="sa-ms">On a shared or lab computer? <button type="button" class="sa-btn-s" id="saWipe">Sign out and remove my answers from this computer</button></p></div>' +
+    '<p class="sa-ms">On a shared or lab computer? <button type="button" class="sa-btn-s" id="saWipe">Sign out of this computer</button> Your work stays in your account.</p></div>' +
     (function () { var G = gaps(); return G.length ? '<div class="sa-note"><b>You skipped ' + G.length + " answer" + (G.length > 1 ? "s" : "") + '.</b> Your PDF lists them. Your report is stronger if you fill them in. Tap one to go there.<ul class="sa-gaps">' + G.slice(0, 12).map(function (g) { return '<li><button type="button" class="sa-errgo" data-gostep="' + g.s + '" data-go="' + esc(g.path) + '">' + esc(g.step + ": " + g.text) + "</button></li>"; }).join("") + (G.length > 12 ? "<li>And " + (G.length - 12) + " more.</li>" : "") + "</ul></div>" : ""; })() +
     '<div class="sa-note">Use of AI: your report must state honestly how you used AI, including this tool. The PDF is evidence and structure, and the explanations, justifications, theory and references in your report must be your own work.</div>';
 }
@@ -790,7 +804,7 @@ document.addEventListener("click", function (ev) {
   if (t.id === "saSkip") { next(true); return; }
   if (t.dataset.gostep !== undefined) { var gs = +t.dataset.gostep, gp = t.dataset.go; NOTICE = ""; S.step = gs; if (pagesFor(gs)) setSub(gs, 0); render(); if (gp) setTimeout(function () { jumpTo(gp); }, 60); return; }
   if (t.dataset.zero) { setp(t.dataset.zero + ".l", "0"); setp(t.dataset.zero + ".c", "cn"); render(true); return; }
-  if (t.id === "saWipe") { if (confirm("Sign out and remove your answers and screenshots from this computer? Save progress first if you want to continue later.")) { try { localStorage.removeItem(DRAFT); localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} IMG = {}; idbSet(imgKey(), {}).then(function () { location.href = "index.html"; }); } return; }
+  if (t.id === "saWipe") { if (confirm("Sign out of this computer? Your work stays in your account. Sign in with your ID and PIN to continue.")) { try { localStorage.removeItem(DRAFT); localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} IMG = {}; idbSet(imgKey(), {}).then(function () { location.href = "index.html?out=1"; }); } return; }
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
   if (t.dataset.gost !== undefined) { setSub(8, stPages().indexOf("st:" + t.dataset.gost)); render(); return; }
   if (t.dataset.sub !== undefined) { setSub(S.step, +t.dataset.sub); render(); return; }
@@ -890,12 +904,13 @@ function makeIt() {
   var msg = $("saPdfMsg"); if (!S.agree) { msg.textContent = "Tick the box first."; return; }
   msg.textContent = "Building your PDF..."; deriveLines();
   if (!window.jspdf) { msg.textContent = "The PDF maker did not load. Check your internet connection, refresh the page, and try again. Your answers are kept."; return; }
-  var W = JSON.parse(JSON.stringify(S)); delete W.biz.student; delete W.biz.sid; delete W.biz.email; ["step", "sub", "agree", "model", "seq", "code", "gaps"].forEach(function (k) { delete W[k]; });
+  var W = JSON.parse(JSON.stringify(S)); delete W.biz.student; delete W.biz.sid; delete W.biz.email; ["step", "sub", "agree", "model", "seq", "code", "gaps", "savedAt"].forEach(function (k) { delete W[k]; });
   sha(JSON.stringify(W)).then(function (h) {
     var code = (h || String(Date.now())).slice(0, 10).toUpperCase(), S2 = JSON.parse(JSON.stringify(S)); S2.code = code; S2.gaps = gaps().map(function (g) { return { step: g.step, text: g.text }; });
     return window.SA_PDF(S2, IMG, { embed: payload() }).then(function (res) {
       msg.textContent = "Done. Your PDF is " + res.pages + " pages. Check your downloads. Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself. Submission code " + code + ".";
       showModal("Attach this PDF to your assignment document as an appendix before you submit. Keep a copy of the downloaded file for yourself.");
+      if (CLOUD) { var A = SA.audit(S); SAC.submit(ME.sid, { name: ME.name || "", sid: ME.sid, business: S.biz.name || "", code: code, overall: A.overall, budget: Math.round(SA.budget(S.plan, S.biz).total), skipped: S2.gaps.length, pages: res.pages }).catch(function () {}); }
     });
   }).catch(function (e) { msg.textContent = "The PDF could not be made: " + (e && e.message ? e.message : e); if (window.console) console.warn(e); });
 }
@@ -909,7 +924,22 @@ $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
 window.SA_SET = function (st, img) { S = st; if (img !== undefined) IMG = img || {}; render(); };
 if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
-if (RESUMED) NOTICE = "Welcome back. Your answers were saved on this device, so you are back on step " + (S.step + 1) + ": " + STEPS[S.step] + ". Press Save progress at the top to keep a copy you can open on another device.";
-render();
-idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
+function start(note) {
+  if (note) NOTICE = note; else if (RESUMED) NOTICE = "Welcome back. You are on step " + (S.step + 1) + ": " + STEPS[S.step] + ".";
+  LOADED = true; render();
+  idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
+}
+if (!CLOUD) start();
+else {
+  $("saStep").innerHTML = '<p class="sa-lede">Loading your work...</p>';
+  SAC.ready().then(function (u) {
+    if (SAC.sidOf(u) !== ME.sid) { try { localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (e) {} location.replace("index.html"); return; }
+    return SAC.profile(ME.sid).then(function (p) {
+      var localAt = +S.savedAt || 0, cs = null; try { cs = p && p.state ? JSON.parse(p.state) : null; } catch (e) {}
+      if (cs && cs.biz && (+cs.savedAt || 0) > localAt) { S = stamp(cs); delete S.tsub; RESUMED = S.step > 0; }
+      if (p && p.name && !ME.name) { ME.name = p.name; stamp(S); }
+      return SAC.loadImgs(ME.sid).then(function (im) { Object.keys(im).forEach(function (k) { SENT[k] = im[k].length; if (!IMG[k]) IMG[k] = im[k]; }); if (Object.keys(im).length) idbSet(imgKey(), IMG); }, function () {});
+    }).then(function () { start(); cloudImgs(); cloudMsg("Saved to your account"); }, function (e) { start(); cloudMsg("Could not load from your account: " + SAC.say(e) + " Using this device's copy.", true); });
+  });
+}
 })();
