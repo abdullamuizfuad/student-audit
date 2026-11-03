@@ -82,7 +82,7 @@ function build(S, IMG, fonts, logo, dims, opts) {
   function tint(c, t) { return [Math.round(c[0] + (255 - c[0]) * t), Math.round(c[1] + (255 - c[1]) * t), Math.round(c[2] + (255 - c[2]) * t)]; }
   var ACC = [36, 85, 130], INK = [29, 43, 52], MUT = [99, 113, 124], WHITE = [255, 255, 255], LINE = [214, 222, 228];
   var COL = { good: [46, 139, 87], warn: [201, 138, 27], bad: [209, 80, 63] };
-  var SCOL = { web: [36, 85, 130], seo: [42, 130, 187], content: [47, 169, 169], smads: [63, 158, 116], banner: [28, 63, 99], email: [95, 168, 211], infl: [31, 127, 127], viral: [124, 201, 166], affil: [122, 147, 168] };
+  var SCOL = { social: [63, 158, 116], blog: [47, 169, 169], newsletter: [95, 168, 211], video: [31, 127, 127], direct: [30, 120, 80], web: [36, 85, 130], seo: [42, 130, 187], content: [47, 169, 169], smads: [63, 158, 116], banner: [28, 63, 99], email: [95, 168, 211], infl: [31, 127, 127], viral: [124, 201, 166], affil: [122, 147, 168] };
   var A = SA.audit(S), B = SA.budget(S.plan, S.biz), lab = B.labels, T = SA.TBY[S.biz.type] || SA.TBY.service;
   var f0 = function (n) { return Math.round(n).toLocaleString("en-US"); };
   var tx = function (s, x, yy, o) { doc.text(safe(s), x, yy, o); };
@@ -259,31 +259,82 @@ function build(S, IMG, fonts, logo, dims, opts) {
   /* ---------- plan ---------- */
   doc.addPage(); y = TOP;
   fill(tint(ACC, 0.9)); doc.roundedRect(M, y - 5, CW, 11, 3, 3, "F"); F("fb", 8.5, ACC); tx("12-MONTH PLAN (written by the student, structured and costed by the tool)", M + 4, y + 1.5); y += 12;
-  head("4. Marketing objectives", "Written by the student. The tool checked that each has a KPI, a baseline, a target and a deadline.");
+  var TYPE_LBL = { aware: "Awareness", engage: "Engagement", sales: "Sales", loyal: "Loyalty" };
+  var LVL_COL = { ok: COL.good, high: COL.warn, low: COL.warn, veryhigh: COL.bad, na: MUT };
+  var MISSC = [176, 74, 60];
+  function stagesOf(s) { var c = SA.chosen(s.stages); return c.length ? c : ((SA.SBY[s.id] || {}).stages || []); }
+  var onStrats = S.plan.strats.filter(function (s) { return s.on; });
+  head("4. Marketing objectives", "SMART means Specific, Measurable, Achievable, Relevant and Time-bound. The table under each objective shows how the student built each part, and the tool's realistic check for a 12-month plan.");
+  var haveT = {}; S.objs.forEach(function (o) { if (o.type) haveT[o.type] = 1; });
+  para("Funnel coverage: " + ["aware", "engage", "sales", "loyal"].map(function (k) { return TYPE_LBL[k] + " " + (haveT[k] ? "yes" : "no"); }).join(", ") + ". A strong plan has at least one objective for awareness, engagement and sales.", { size: 8.8, col: MUT, gap: 3 });
   S.objs.forEach(function (o, i) {
-    var ms = (o.q || []).concat([o.target]).map(function (v) { return v === "" || v == null ? "" : String(v) + (o.unit || ""); }), ln = split(o.text, CW - 8);
-    room(ln.length * lh(9.5) + 36);
-    fill([246, 249, 251]); doc.roundedRect(M, y - 4.2, CW, ln.length * lh(9.5) + 29, 3, 3, "F");
-    F("ax", 11, ACC); tx("Objective " + (i + 1), M + 4, y); y += 5;
-    F("fr", 9.5, INK); tx(ln.join("\n"), M + 4, y); y += ln.length * lh(9.5) + 1.5;
-    F("fb", 7.5, MUT); tx("KPI", M + 4, y); F("fr", 8.5, INK); tx(split(o.kpi, CW - 24)[0] || "", M + 20, y); y += 4.4;
-    F("fb", 7.5, MUT); tx("BASELINE", M + 4, y); F("fr", 8.5, INK); tx(o.base == null || o.base === "" ? "to be entered" : String(o.base) + (o.unit || ""), M + 20, y);
-    F("fb", 7.5, MUT); tx("TARGET", M + 60, y); F("fr", 8.5, INK); tx(o.target == null || o.target === "" ? "to be entered" : String(o.target) + (o.unit || ""), M + 75, y);
-    F("fb", 7.5, MUT); tx("DONE BY", M + 110, y); F("fr", 8.5, INK); tx("month " + o.deadline + " (" + lab[Math.min(11, (+o.deadline || 12) - 1)].label + ")", M + 125, y); y += 4.4;
-    F("fb", 7.5, MUT); tx("MILESTONES", M + 4, y); F("fr", 8.5, INK); tx("Month 3: " + (ms[0] || "-") + "   Month 6: " + (ms[1] || "-") + "   Month 9: " + (ms[2] || "-") + "   Month 12: " + (ms[3] || "-"), M + 28, y); y += 4.4;
-    F("fb", 7.5, MUT); tx("MEASURED WITH", M + 4, y); F("fr", 8.5, INK); tx(split(o.tool || "", CW - 38)[0] || "", M + 32, y); y += 9;
+    F("fb", 10, INK); var sent = String(o.text || "").trim() || SA.objSentence(o, S), sl = split(sent, CW - 10), P = SA.smartParts(o, S), rz = SA.realism(o), stg = SA.FBY[SA.TYPE_STAGE[o.type]];
+    room(sl.length * lh(10) + 78);
+    F("ax", 11.5, ACC); tx("Objective " + (i + 1) + ": " + (TYPE_LBL[o.type] || "type not given yet") + (stg ? " (funnel stage: " + stg[1] + ")" : ""), M, y); y += 5.5;
+    fill([246, 249, 251]); doc.roundedRect(M, y - 4.2, CW, sl.length * lh(10) + 5, 2.5, 2.5, "F"); F("fb", 10, INK); tx(sl.join("\n"), M + 5, y); y += sl.length * lh(10) + 4;
+    table([{ w: 10, h: "" }, { w: 52, h: "What it means" }, { w: 112, h: "This objective" }],
+      ["S", "M", "A", "R", "T"].map(function (L) {
+        var part = P[L] || {}, txt = String(part.text || "").trim(), bad = !part.ok;
+        if (!txt) txt = "Not given yet.";
+        if (bad && part.miss) txt += (/[.!?]$/.test(txt) ? " " : ". ") + "Missing: " + part.miss;
+        return [{ t: L, b: true, c: part.ok ? COL.good : MISSC }, SA.SMART_HELP[L][0] + ": " + SA.SMART_HELP[L][1], { t: txt, c: bad ? MISSC : INK }];
+      }), { size: 8, zebra: true });
+    y -= 1;
+    var q = (o.q || []).map(function (v) { return v === "" || v == null ? "-" : String(v) + (o.unit === "%" ? "%" : ""); });
+    para("Milestones: Q1 " + (q[0] || "-") + "  |  Q2 " + (q[1] || "-") + "  |  Q3 " + (q[2] || "-") + "  |  Q4 " + (o.target == null || o.target === "" ? "-" : String(o.target) + (o.unit === "%" ? "%" : "")) + " (target)." + (o.tool ? " Measured with " + o.tool + "." : ""), { size: 8.5, gap: 1.2 });
+    var LVL_TXT = { ok: "Realistic", high: "Ambitious", veryhigh: "Very ambitious", low: "A very small change", na: "Not checked yet" };
+    para("Realistic check: " + (LVL_TXT[rz.level] || "") + ". " + String(rz.msg || "").replace(/^(Realistic|Ambitious)[:.]\s*/, ""), { size: 8.5, bold: true, col: LVL_COL[rz.level] || MUT, gap: 6 });
   });
+
+  /* ---------- the marketing funnel ---------- */
+  doc.addPage(); y = TOP;
+  head("The marketing funnel", "People move from noticing the business to buying and coming back. Each stage needs at least one strategy. The direct route is where the sale happens.");
+  var STC = { aware: [36, 85, 130], consider: [42, 130, 187], convert: [30, 120, 80], loyal: [47, 169, 169] };
+  var byStage = {}; SA.FUNNEL.forEach(function (f) { byStage[f[0]] = []; });
+  onStrats.forEach(function (s) { stagesOf(s).forEach(function (k) { if (byStage[k]) byStage[k].push(s); }); });
+  var FW = 86, BH = 20, fx = M, fy = y + 2, d = 12;
+  if (S.funnelAsset) {
+    /* Placeholder: the lecturer's Social Media Health Check funnel asset goes here (S.funnelAsset, an image data URL). */
+    try { doc.addImage(S.funnelAsset, "PNG", fx, fy, FW, BH * 4, undefined, "FAST"); } catch (e) { F("fr", 8, MUT); tx("Funnel image could not be placed.", fx, fy + 4); }
+  }
+  SA.FUNNEL.forEach(function (f, k) {
+    var top = fy + k * BH, w0 = FW - k * d * 2 / 1.2, w1 = FW - (k + 1) * d * 2 / 1.2, cx = fx + FW / 2;
+    if (!S.funnelAsset) {
+      fill(STC[f[0]]); poly([[cx - w0 / 2, top], [cx + w0 / 2, top], [cx + w1 / 2, top + BH - 1.2], [cx - w1 / 2, top + BH - 1.2]], "F");
+      F("fb", 9.5, WHITE); tx(f[1], cx, top + BH / 2, { align: "center" });
+    }
+    var rx = fx + FW + 6, rw = CW - FW - 6, list = byStage[f[0]], ry = top + 4;
+    F("fb", 8.8, STC[f[0]]); tx(f[1] + ": " + f[2].toLowerCase(), rx, ry); ry += 4.4;
+    var names = list.map(function (s) { return s.name + (s.id === "direct" ? " (the direct route)" : ""); });
+    F("fr", 8.2, list.length ? INK : MISSC);
+    var ln = split(list.length ? names.join("; ") : (f[0] === "convert" ? "No strategy turns interest into a sale yet." : "No strategy at this stage yet."), rw);
+    tx(ln.slice(0, 3).join("\n"), rx, ry);
+  });
+  y = fy + BH * 4 + 6;
+  var directOn = onStrats.some(function (s) { return s.id === "direct"; }), sig = [];
+  try { sig = SA.directSignals(S); } catch (e) { sig = []; }
+  if (!directOn && sig.length) { h3("The audit suggests a direct route", COL.warn); bullets(sig.slice(0, 2), { size: 8.6 }); }
+  para("Student to write in the report: how a customer moves through these stages for this business, and where each strategy takes over.", { size: 8.5, col: MUT, gap: 4 });
+
+  /* ---------- how the plan fits together ---------- */
+  head("How the plan fits together", "Each objective needs at least one strategy that moves its KPI. A tick means the strategy is one the tool expects to move that KPI.");
+  table([{ w: 22, h: "Objective" }, { w: 44, h: "KPI" }, { w: 80, h: "Strategies that drive it" }, { w: 28, h: "Funnel stage" }],
+    S.objs.map(function (o, i) {
+      var want = SA.kpiStrats(o), drv = onStrats.filter(function (s) { return (s.links || {})[o.id]; }), stg = SA.FBY[SA.TYPE_STAGE[o.type]];
+      return [{ t: "Objective " + (i + 1), b: true }, o.kpi || "-", drv.length ? { t: drv.map(function (s) { return s.name + (want.indexOf(s.id) >= 0 ? " (tick)" : ""); }).join("; ") } : { t: "None yet", c: MISSC, b: true }, stg ? stg[1] : "-"];
+    }), { size: 8, zebra: true });
 
   doc.addPage(); y = TOP;
   head("5. Strategies", "Chosen by the student from the course list of electronic marketing strategies. The reasoning is the student's. The tool added the cost lines.");
   S.plan.strats.filter(function (s) { return s.on; }).forEach(function (s) {
     var ls = S.plan.lines.filter(function (l) { return l.s === s.id; }), col = SCOL[s.id] || ACC, st = B.byS[s.id];
     room(40); fill(col); doc.roundedRect(M, y - 4.6, CW, 7.4, 2, 2, "F"); F("ax", 11, WHITE); tx(s.name, M + 4, y + 0.3); F("fb", 8.5, WHITE); tx("MVR " + f0(st ? st.total : 0) + " over 12 months", M + CW - 4, y + 0.3, { align: "right" }); y += 8;
+    var sd = SA.SBY[s.id] || {}; para("Course topic: " + (sd.course || s.name) + ".  Funnel stage: " + (stagesOf(s).map(function (k) { return (SA.FBY[k] || [k, k])[1]; }).join(", ") || "-") + "." + (sd.core ? "  Required for every plan." : ""), { size: 8.5, gap: 1.5, col: col });
     para("Why it fits: " + (SA.chosen(s.fits).join(", ") || "-") + "." + (s.note ? " " + String(s.note).trim().replace(/([^.!?])$/, "$1.") : ""), { size: 9, gap: 1.5 });
     var serves = []; S.objs.forEach(function (o, i) { if ((s.links || {})[o.id]) serves.push("Objective " + (i + 1)); }); if (serves.length) para("Supports: " + serves.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
     var reach = []; (TM.segs || []).forEach(function (g) { if ((s.segl || {})[g.id]) reach.push(g.name); }); if (reach.length) para("Reaches: " + reach.join(", ") + ".", { size: 9, gap: 1.5, col: MUT });
-    var cxp = SA.stratCtx(S, s.id), chs = SA.scChoices(s.id, (S.plan.cfg || {})[s.id], cxp);
-    para("How it works: " + SA.SCFG[s.id].flow.map(function (f, k) { return (k + 1) + ". " + f; }).join("  "), { size: 8.5, gap: 1.5, col: MUT });
+    var cxp = SA.stratCtx(S, s.id), chs = SA.SCFG[s.id] ? SA.scChoices(s.id, (S.plan.cfg || {})[s.id], cxp) : [];
+    if (SA.SCFG[s.id]) para("How it works: " + SA.SCFG[s.id].flow.map(function (f, k) { return (k + 1) + ". " + f; }).join("  "), { size: 8.5, gap: 1.5, col: MUT });
     if (chs.length) para("Choices: " + chs.join(". ") + ".", { size: 8.5, gap: 1.5 });
     ls.forEach(function (l) {
       var mo = l.months || [], consec = mo.length > 1 && mo[mo.length - 1] - mo[0] === mo.length - 1;
