@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Digital Presence Audit, Student Edition | Islandeative</title>
 <meta name="description" content="A free audit tool for e-marketing students. Check a business's social media, Google profile, website and reviews, then build your own 12-month plan with a target market, objectives, strategies, Gantt chart and budget.">
-<script>try{var _st=JSON.parse(localStorage.getItem("ia-student")||sessionStorage.getItem("ia-student")||"null");if(!_st||!_st.verified||!/^S0\d{5}$/.test(_st.sid||""))location.replace("index.html")}catch(e){location.replace("index.html")}</script>
+<script>try{var _st=JSON.parse(localStorage.getItem("ia-student")||sessionStorage.getItem("ia-student")||"null");if(!_st||!_st.verified||!_st.cloud||!/^S0\d{5}$/.test(_st.sid||""))location.replace("index.html")}catch(e){location.replace("index.html")}</script>
 <script>try{if(localStorage.getItem("ia-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,100..125,400..900;1,100..125,400..900&family=Figtree:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/site.css">
 <link rel="stylesheet" href="assets/logo-loop.css?v=1">
-<link rel="stylesheet" href="student-audit.css?v=11">
+<link rel="stylesheet" href="student-audit.css?v=12">
 </head>
 <body>
 <header class="sa-top">
@@ -29,6 +29,7 @@
   <noscript><p>This tool needs JavaScript to run.</p></noscript>
   <div class="sa-prog" aria-hidden="true"><span id="saBar"></span></div>
   <p class="sa-stepno" id="saStepNo"></p>
+  <p class="sa-cloud" id="saCloud" aria-live="polite"></p>
   <div id="saStep" tabindex="-1"></div>
   <div class="sa-donelogo" id="saDoneLogo" hidden><div class="il-logo" id="il-logo" role="button" tabindex="0" aria-label="Islandeative, your growth partner in the Maldives. Activate to replay the animation.">
     <div class="il-layer il-band il-still"><div class="il-mask"><div class="il-tide"><div class="il-in"><svg viewBox="0 120 4678 4170" aria-hidden="true"><path d="M4533.284,1450.505c13.278,45.527 52.747,195.094 56.458,249.932c21.454,317.047 -0.638,607.818 -96.944,861.152c-431.241,1134.383 -1813.124,1636.85 -1813.124,1636.85c0,0 268.419,-677.039 -252.874,-682.546c-187.369,-1.98 -150.99,-5.763 -629.637,0.522c-44.594,0.586 -103.966,-1.423 -103.966,-1.423c-886.714,0 -1600.381,-718.41 -1600.381,-1603.289c0,-884.879 751.061,-1603.289 1637.776,-1603.289l1274.127,0c886.714,0 1385.01,649.874 1528.566,1142.09Z" style="fill:var(--il-navy)"/></svg></div></div></div></div>
@@ -60,12 +61,16 @@
   </div>
 </div>
 
-<footer class="sa-foot wrap"><p>© <span id="saYr"></span> Islandeative. The Student Audit tool, its scoring rules and benchmarks are owned by Islandeative. Your answers stay on your device. The tool does not send them anywhere.</p></footer>
+<footer class="sa-foot wrap"><p>© <span id="saYr"></span> Islandeative. The Student Audit tool, its scoring rules and benchmarks are owned by Islandeative. Your answers save to your own account, which only you and your lecturer can see.</p></footer>
 
 <script src="vendor/jspdf.umd.min.js?v=1" defer></script>
+<script src="vendor/firebase-app-compat.js?v=1" defer></script>
+<script src="vendor/firebase-auth-compat.js?v=1" defer></script>
+<script src="vendor/firebase-firestore-compat.js?v=1" defer></script>
+<script src="cloud.js?v=1" defer></script>
 <script src="core.js?v=12" defer></script>
 <script src="pdf.js?v=15" defer></script>
 <script src="assets/logo-loop.js?v=3" defer></script>
-<script src="ui.js?v=23" defer></script>
+<script src="ui.js?v=24" defer></script>
 </body>
 </html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lecturer | Student Audit</title>
+<script>try{if(localStorage.getItem("ia-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="student-audit.css?v=12">
+<style>
+  .ad-wrap{max-width:1100px}
+  .ad-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .ad-row input[type=text],.ad-row input[type=email],.ad-row input[type=password]{font:inherit;padding:.6em .8em;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-width:0;flex:1 1 220px}
+  .ad-ta{width:100%;min-height:110px;font:inherit;padding:.6em .8em;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  .ad-tbl-wrap{overflow-x:auto}
+  .ad-tbl{min-width:760px}
+  .ad-tbl td,.ad-tbl th{vertical-align:top}
+  .ad-dup{background:color-mix(in srgb,var(--err) 14%,transparent);font-weight:700}
+  .ad-msg{font-weight:600;margin:8px 0 0}
+  .ad-msg.bad{color:var(--err)}
+  .ad-stats{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 10px;font-weight:700}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .ad-x{font:inherit;font-size:.8rem;padding:.2em .6em;border:1px solid var(--line);border-radius:8px;background:var(--raised);color:var(--ink);cursor:pointer}
+</style>
+</head>
+<body>
+<header class="sa-top"><div class="wrap sa-top-in"><a class="sa-logo" href="index.html"><img src="assets/logo.png" alt="" width="34" height="30"><span class="sa-brand">Student audit: lecturer</span></a>
+  <div class="sa-tools"><button type="button" class="sa-toolbtn" id="adOut" hidden><span>Sign out</span></button></div></div></header>
+<main class="wrap sa-main ad-wrap">
+  <section id="adLogin" class="sa-card">
+    <h1 class="sa-h">Lecturer sign-in</h1>
+    <form id="adForm" class="ad-row" autocomplete="on">
+      <label class="sr-only" for="adEmail">Email</label><input id="adEmail" type="email" placeholder="Lecturer email" autocomplete="username" required>
+      <label class="sr-only" for="adPass">Password</label><input id="adPass" type="password" placeholder="Password" autocomplete="current-password" required>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+    <p class="ad-msg" id="adLoginMsg" role="alert"></p>
+  </section>
+
+  <div id="adApp" hidden>
+    <section class="sa-card">
+      <h2>Students</h2>
+      <div class="ad-stats" id="adStats"></div>
+      <div class="ad-tbl-wrap" tabindex="0" role="region" aria-label="Students"><table class="sa-tbl ad-tbl" id="adTbl"></table></div>
+      <p class="sa-ms">Same code for two students = the same work was handed in. Forgotten PIN: open <a href="https://console.firebase.google.com/project/mkt303-audit/authentication/users" target="_blank" rel="noopener">Firebase, Authentication, Users</a>, delete that student's login (s0xxxxx@student.mnu.edu.mv), and tell them to use "First time: create a PIN". Their work is kept.</p>
+      <div class="ad-row"><button type="button" class="btn btn-ghost" id="adReload">Refresh</button></div>
+    </section>
+
+    <section class="sa-card">
+      <h2>Add students to the class list</h2>
+      <p class="sa-tip">Upload the MNU class list file as you downloaded it (.xls), or a .csv, or paste student IDs below (one per line, or any text with IDs in it). Students marked Drop are left out. The file stays on this computer: only the IDs are saved.</p>
+      <div class="ad-row"><label for="adTerm"><b>Term</b></label><input id="adTerm" type="text" value="T2 2026" style="flex:0 1 140px"><input id="adFile" type="file" accept=".xls,.xlsx,.html,.htm,.csv,.txt"></div>
+      <textarea id="adPaste" class="ad-ta" placeholder="S083001&#10;S083002"></textarea>
+      <div class="ad-row"><button type="button" class="btn btn-ghost" id="adCheck">Check the list</button><button type="button" class="btn btn-primary" id="adAdd" disabled>Add to the class list</button></div>
+      <p class="ad-msg" id="adAddMsg" role="status"></p>
+    </section>
+  </div>
+</main>
+<footer class="sa-foot wrap"><p>Only lecturer accounts can open this page's data.</p></footer>
+<script src="vendor/firebase-app-compat.js?v=1"></script>
+<script src="vendor/firebase-auth-compat.js?v=1"></script>
+<script src="vendor/firebase-firestore-compat.js?v=1"></script>
+<script src="cloud.js?v=1"></script>
+<script src="admin.js?v=1"></script>
+</body>
+</html>

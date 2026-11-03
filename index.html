@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,100..125,400..900;1,100..125,400..900&family=Figtree:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/site.css">
 <link rel="stylesheet" href="assets/logo-loop.css?v=1">
-<link rel="stylesheet" href="student-audit.css?v=4">
+<link rel="stylesheet" href="student-audit.css?v=5">
 </head>
 <body class="sa-gate-body">
 <button class="sa-theme sa-gate-theme" id="saTheme" type="button" aria-label="Switch light or dark mode"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23Z"/></svg></button>
@@ -31,20 +31,32 @@
   <h1 class="sa-gate-h">Digital Presence Audit</h1>
   <p class="sa-gate-sub">Student Edition. Audit a real business, build your 12-month e-marketing plan, and download your evidence report.</p>
   <form class="sa-gate-card" id="gate" novalidate autocomplete="off">
-    <div class="f"><label for="gName">Full name</label><input id="gName" type="text" autocomplete="name" placeholder="As it appears on your student record" required></div>
+    <div class="sa-mode" role="tablist" aria-label="Sign in or create a PIN">
+      <button type="button" role="tab" id="gModeIn" class="on" aria-selected="true">Sign in</button>
+      <button type="button" role="tab" id="gModeNew" aria-selected="false">First time: create a PIN</button>
+    </div>
+    <div class="f" id="gNameF" hidden><label for="gName">Full name</label><input id="gName" type="text" autocomplete="name" placeholder="As it appears on your student record"></div>
     <div class="f"><label for="gId">Student ID</label>
-      <div class="sa-id"><span class="sa-id-s" aria-hidden="true">S</span><input id="gId" type="text" inputmode="numeric" maxlength="6" placeholder="0XXXXX" aria-describedby="gIdHint" required></div>
+      <div class="sa-id"><span class="sa-id-s" aria-hidden="true">S</span><input id="gId" type="text" inputmode="numeric" maxlength="6" placeholder="0XXXXX" aria-describedby="gIdHint" autocomplete="username"></div>
       <span class="sa-hint" id="gIdHint">Type the 6 numbers after the S. They start with 0.</span>
     </div>
-    <div class="sa-mail" id="gMail" aria-live="polite"><svg class="ico" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></svg><span><small>Your student email</small><b id="gMailTxt">s<i>0xxxxx</i>@student.mnu.edu.mv</b></span></div>
+    <div class="f"><label for="gPin" id="gPinL">PIN</label>
+      <input id="gPin" class="sa-pin" type="password" inputmode="numeric" maxlength="6" placeholder="6 numbers" autocomplete="current-password" aria-describedby="gPinHint">
+      <span class="sa-hint" id="gPinHint">The 6-number PIN you made the first time.</span>
+    </div>
+    <div class="f" id="gPin2F" hidden><label for="gPin2">Type the PIN again</label><input id="gPin2" class="sa-pin" type="password" inputmode="numeric" maxlength="6" placeholder="6 numbers" autocomplete="new-password"></div>
+    <label class="sa-showpin"><input type="checkbox" id="gShow"> Show PIN</label>
     <p class="sa-gate-err" id="gErr" role="alert"></p>
-    <button class="btn btn-primary sa-gate-btn" id="gGo" type="submit" disabled>Verify and start</button>
+    <button class="btn btn-primary sa-gate-btn" id="gGo" type="submit" disabled>Sign in</button>
   </form>
-  <p class="sa-gate-note">Your answers stay on your device. At the end you download a PDF report and attach it to your assignment as an appendix. Continuing on another device? Sign in, then press <b>Open saved</b> and choose your saved report.</p>
+  <p class="sa-gate-note">Your work saves to your account as you go, so you can continue on any phone or computer. Keep your PIN secret. Forgot it? Ask your lecturer to reset it. Your work is kept.</p>
 </main>
 <footer class="sa-foot sa-gate-foot"><p>&copy; <span id="saYr"></span> Islandeative. The Student Audit tool, its scoring rules and benchmarks are owned by Islandeative.</p></footer>
 <script src="assets/logo-loop.js?v=3"></script>
-<script src="roster.js?v=1"></script>
-<script src="gate.js?v=6"></script>
+<script src="vendor/firebase-app-compat.js?v=1"></script>
+<script src="vendor/firebase-auth-compat.js?v=1"></script>
+<script src="vendor/firebase-firestore-compat.js?v=1"></script>
+<script src="cloud.js?v=1"></script>
+<script src="gate.js?v=7"></script>
 </body>
 </html>
