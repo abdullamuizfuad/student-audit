@@ -410,93 +410,84 @@ function makeObjectives(A, st) {
   return O;
 }
 
-/* ---------- plan: strategies and cost lines ---------- */
+/* ---------- plan: strategies, funnel stages, recommendations ---------- */
+/* The marketing funnel. Each strategy works at one or more stages. The direct route is the Conversion stage. */
+var FUNNEL = [["aware", "Awareness", "People notice the business"], ["consider", "Consideration", "People compare it and start to trust it"], ["convert", "Conversion", "People enquire, book, order or buy"], ["loyal", "Loyalty", "Customers come back and recommend it"]];
+var FBY = {}; FUNNEL.forEach(function (f) { FBY[f[0]] = f; });
+/* course: the course topic the strategy belongs to, so students cite the right theory */
 var STRATS = [
-  { id: "web", name: "Blogs and Websites", theory: "Customer journey, usability, conversion funnel" },
-  { id: "seo", name: "Search Engine Optimization (SEO)", theory: "Search intent, local SEO, E-E-A-T" },
-  { id: "content", name: "Content Marketing", theory: "Content pillars, storytelling, 80/20 rule" },
-  { id: "smads", name: "Social Media Advertising", theory: "AIDA, targeting and retargeting, frequency" },
-  { id: "banner", name: "Internet Banner Advertising", theory: "Display and search ads, click-through rate, retargeting" },
-  { id: "email", name: "SMS & Email advertising", theory: "Permission marketing, CRM, lifecycle messages" },
-  { id: "infl", name: "Influencer Marketing", theory: "Source credibility, social proof, reach versus trust" },
-  { id: "viral", name: "Viral Marketing", theory: "Word of mouth, social currency, user-generated content" },
-  { id: "affil", name: "Affiliate Marketing", theory: "Performance-based marketing, commission models" }
+  { id: "social", name: "Social Media Marketing (content and paid ads)", core: true, stages: ["aware", "consider"], course: "Content Marketing and Social Media Advertising", theory: "Content pillars, AIDA, targeting and retargeting, frequency" },
+  { id: "web", name: "Website", stages: ["consider", "convert"], course: "Blogs and Websites", theory: "Customer journey, usability, conversion funnel" },
+  { id: "seo", name: "SEO and Google Business Profile", stages: ["aware", "consider"], course: "Search Engine Optimization (SEO)", theory: "Search intent, local SEO, E-E-A-T" },
+  { id: "blog", name: "Blog and Article Content", stages: ["consider"], course: "Content Marketing and Blogs", theory: "Content marketing, search intent, helpful content" },
+  { id: "newsletter", name: "Email Newsletter Content", stages: ["consider", "loyal"], course: "Content Marketing and Email Marketing", theory: "Permission marketing, CRM, customer lifecycle" },
+  { id: "video", name: "Video Content (YouTube and longer video)", stages: ["aware", "consider"], course: "Content Marketing", theory: "Storytelling, video SEO, watch time" },
+  { id: "direct", name: "Direct Route to Customers (DM, WhatsApp, Viber, SMS, email)", direct: true, stages: ["convert", "loyal"], course: "SMS and Email Advertising", theory: "Conversational commerce, permission marketing, the conversion stage of the funnel" },
+  { id: "banner", name: "Google Ads (search and display)", stages: ["aware", "convert"], course: "Internet Banner Advertising", theory: "Search intent, click-through rate, retargeting" },
+  { id: "infl", name: "Influencer Marketing", stages: ["aware", "consider"], course: "Influencer Marketing", theory: "Source credibility, social proof, reach versus trust" },
+  { id: "viral", name: "Viral Marketing", stages: ["aware"], course: "Viral Marketing", theory: "Word of mouth, social currency, user-generated content" },
+  { id: "affil", name: "Affiliate Marketing", stages: ["convert"], course: "Affiliate Marketing", theory: "Performance-based marketing, commission models" }
 ];
 var SBY = {}; STRATS.forEach(function (s) { SBY[s.id] = s; });
+var MIN_STRATS = 3;
 
-/* line: {id, s, name, basis: 'Price list'|'At cost'|'Estimate', unit, qty, kind: 'monthly'|'oneoff'|'every', every, start, end, season, disc, note} */
-function makeStrategies(A, st, objs) {
-  var b = st.biz || {}, T = TBY[b.type] || TBY.service, hasSite = (st.site || {}).has === "yes";
-  var sc = A.social, missPlats = sc.plats.filter(function (p) { return p.core && p.missing; });
-  var S = [], L = [];
-  function line(s, o) { o.s = s; L.push(o); }
-  var lowEng = sc.plats.some(function (p) { return p.er_ratio != null && p.er_ratio < 0.6; });
-  var tot = A.social.plats.reduce(function (n, p) { return n + (p.followers || 0); }, 0);
-  var peakLead = 4;
-  if (T.season) { var lab = monthLabels(b.start); lab.forEach(function (m) { if (m.cal === 10) peakLead = m.i; }); }
-  var peakLead2 = peakLead + 3 > 12 ? Math.max(1, peakLead - 6) : peakLead + 3;
-
-  // website
-  var web = A.site.none ? { n: "Build a new mobile-first website", u: 12000, k: "new" } : (A.site.score < 75 ? { n: "Redesign the existing website", u: 7000, k: "redesign" } : { n: "Targeted improvements to the existing website", u: 2500, k: "tune" });
-  line("web", { name: web.n + " (design, pages, " + (T.travel ? "booking or enquiry route, " : "enquiry route, ") + "simple menu, FAQ)", basis: "Estimate", unit: web.u, qty: 1, kind: "oneoff", start: 1, end: A.site.none ? 3 : 2, note: "Not on the Islandeative price list. Replace with 2 or 3 written quotes." });
-  if (A.site.none) line("web", { name: "Domain, hosting and SSL certificate", basis: "At cost", unit: 200, qty: 1, kind: "monthly", start: 1, end: 12, note: "About MVR 2,400 a year. Confirm with a hosting provider." });
-  if (b.type === "stay" && (A.site.none || (st.site.checks || {}).contact !== "y"))
-    line("web", { name: "Booking page or enquiry-to-WhatsApp flow", basis: "Price list", unit: 3500, qty: 1, kind: "oneoff", start: 2, end: 3 });
-  line("web", { name: "Blog or news articles answering customer questions (2 a month)", basis: "Price list", unit: 250, qty: 2, kind: "monthly", start: A.site.none ? 4 : 3, end: 12, note: "Priced as two static posts a month." });
-  // seo
-  if (!A.gbp.na) line("seo", { name: "Google Business Profile optimisation", basis: "Price list", unit: 800, qty: 1, kind: "oneoff", start: 1, end: 1 });
-  line("seo", { name: "SEO and structured data set-up (titles, descriptions, headings, schema, sitemap)", basis: "Estimate", unit: 1500, qty: 1, kind: "oneoff", start: 2, end: 3, note: "Not on the Islandeative price list. Replace with a quote." });
-  line("seo", { name: "Monthly review: ask for Google reviews, reply to all reviews, update profile", basis: "Estimate", unit: 0, qty: 1, kind: "monthly", start: 1, end: 12, note: "Owner's own time. Zero cash cost." });
-  // content
-  var reels = lowEng || sc.score < 60 ? 3 : 2, posts = 4;
-  line("content", { name: "Reels with new filming (" + reels + " a month)", basis: "Price list", unit: 1000, qty: reels, kind: "monthly", start: 2, end: 12, disc: true });
-  line("content", { name: "Static or carousel posts (" + posts + " a month)", basis: "Price list", unit: 250, qty: posts, kind: "monthly", start: 2, end: 12, disc: true });
-  line("content", { name: "Half-day content shoot (every " + (T.travel ? "quarter" : "6 months") + ")", basis: "Price list", unit: 2500, qty: 1, kind: "every", every: T.travel ? 3 : 6, start: 1, end: 12, note: "Island travel is billed at cost." });
-  // social ads
-  line("smads", { name: "Facebook, Instagram and TikTok ad spend (paid on the business's own card)", basis: "At cost", unit: 1500, qty: 1, kind: "monthly", start: 2, end: 12, season: T.season, note: "Ad spend is paid straight to the platform with no mark-up." });
-  if (missPlats.length) line("smads", { name: "Set up and run " + missPlats.length + " new platform" + (missPlats.length > 1 ? "s" : "") + " (" + missPlats.map(function (p) { return p.name; }).join(", ") + ")", basis: "Price list", unit: 1000, qty: Math.min(2, missPlats.length), kind: "monthly", start: 1, end: 12 });
-  // banner
-  line("banner", { name: "Google Ads management (search and display banners)", basis: "Price list", unit: 1500, qty: 1, kind: "monthly", start: A.site.none ? 4 : 3, end: 12 });
-  line("banner", { name: "Google Ads spend (at cost)", basis: "At cost", unit: 1500, qty: 1, kind: "monthly", start: A.site.none ? 4 : 3, end: 12, season: T.season });
-  // email
-  line("email", { name: "Broadcast set-up with custom templates (WhatsApp, SMS, email)", basis: "Price list", unit: 2500, qty: 1, kind: "oneoff", start: 2, end: 2 });
-  line("email", { name: "Broadcast sends (2 message sets a month)", basis: "Price list", unit: 150, qty: 2, kind: "monthly", start: 3, end: 12 });
-  line("email", { name: "Campaign month bundle (3 campaigns a year)", basis: "Price list", unit: 2500, qty: 1, kind: "every", every: 4, start: 3, end: 12, note: "If a campaign runs past the month, even by 3 days, the next month is charged in full." });
-  // influencer
-  line("infl", { name: "Influencer campaign management (2 campaigns)", basis: "Price list", unit: 2000, qty: 1, kind: "months", months: [peakLead, peakLead2], start: 1, end: 12 });
-  line("infl", { name: "Influencer fees or complimentary stays (at cost)", basis: "At cost", unit: 3000, qty: 1, kind: "months", months: [peakLead, peakLead2], start: 1, end: 12, note: "Estimate. Agree the fee with each creator in writing." });
-  // viral
-  line("viral", { name: "Challenge or giveaway Reel (2 campaigns)", basis: "Price list", unit: 1000, qty: 1, kind: "months", months: [5, 11], start: 1, end: 12 });
-  line("viral", { name: "Giveaway prize (at cost)", basis: "At cost", unit: 1000, qty: 1, kind: "months", months: [5, 11], start: 1, end: 12, note: "Estimate." });
-  // affiliate
-  line("affil", { name: "Partner or affiliate commission (paid only when a sale is made)", basis: "Estimate", unit: 1000, qty: 1, kind: "monthly", start: 4, end: 12, note: "Estimate of about 10% of attributed sales. Replace using the sales forecast." });
-
-  var on = { web: true, seo: true, content: true, smads: true, banner: true, email: true,
-    infl: !!(T.travel || b.type === "food") && tot < 15000, viral: lowEng, affil: b.type === "stay" && A.rep.plats.filter(function (p) { return p.status === "listed"; }).length >= 2 };
-  var why = {
-    web: A.site.none ? "The business has no website. A simple, fast site is the base for search, ads and AI answers." : "Website score " + A.site.score + "/100. " + ((A.site.notes && A.site.notes[0]) || ""),
-    seo: "Google profile and website are how people find the business when they search.",
-    content: "Social score " + A.social.score + "/100. Regular, useful content builds reach and trust.",
-    smads: missPlats.length ? "New platforms need paid reach to get started." : "Paid boosts reach people who do not follow the business yet.",
-    banner: "Search and display ads capture people who are already looking, and bring visitors to the website.",
-    email: "Messages to past guests and enquirers cost little and bring repeat business.",
-    infl: "Creators give social proof and reach to new audiences.",
-    viral: "Engagement is low. Shareable ideas can lift it without a big budget.",
-    affil: "Partner commission shifts cost to results and widens distribution."
-  };
-  var serve = { web: ["site", "biz"], seo: ["gbp", "site", "biz"], content: ["social", "rep"], smads: ["social", "biz"], banner: ["site", "biz"], email: ["biz", "rep"], infl: ["social", "rep"], viral: ["social"], affil: ["biz"] };
-  STRATS.forEach(function (sd) {
-    var ls = L.filter(function (l) { return l.s === sd.id; });
-    var s0 = Math.min.apply(null, ls.map(function (l) { return l.start; }));
-    var e0 = Math.max.apply(null, ls.map(function (l) { return l.end; }));
-    var ob = objs.filter(function (o) { return serve[sd.id].indexOf(o.area) >= 0; }).map(function (o) { return o.id; });
-    S.push({ id: sd.id, name: sd.name, theory: sd.theory, on: !!on[sd.id], why: why[sd.id], objs: ob, start: s0, end: e0 });
-  });
-  L.forEach(function (l, i) { l.id = "l" + (i + 1); });
-  var plan = { strats: S, lines: L, cont: 10 };
-  return plan;
+/* Which strategies move an objective's KPI. Read from the KPI and the sentence; falls back to the objective type. */
+var KPI_RULES = [
+  [/follower|reach|awareness|impression|profile visit/, ["social", "video", "infl", "viral"]],
+  [/engagement|saves|shares|comments|likes|interact/, ["social", "video", "viral"]],
+  [/website|visitor|traffic|search|google profile|ranking|seo/, ["web", "seo", "blog", "banner"]],
+  [/enquir|lead|quote/, ["direct", "web", "banner", "seo"]],
+  [/booking|order|sale|revenue|direct|purchase|buy/, ["direct", "web", "banner", "affil"]],
+  [/conversion/, ["direct", "web"]],
+  [/review|rating/, ["seo", "direct"]],
+  [/message|dm\b|whatsapp|chat|viber/, ["direct", "social"]],
+  [/email|subscriber|newsletter|open rate/, ["newsletter", "direct"]],
+  [/repeat|return|loyal|referr/, ["newsletter", "direct"]],
+  [/video|views|youtube|watch/, ["video", "social"]]
+];
+var TYPE_STRATS = { aware: ["social", "video", "seo"], engage: ["social", "newsletter", "blog"], sales: ["direct", "web"], loyal: ["newsletter", "direct"] };
+function kpiStrats(o) {
+  var t = (String((o && o.kpi) || "") + " " + String((o && o.text) || "")).toLowerCase(), out = [];
+  KPI_RULES.forEach(function (r) { if (r[0].test(t)) r[1].forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); }); });
+  if (!out.length) (TYPE_STRATS[o && o.type] || []).forEach(function (x) { out.push(x); });
+  return out;
 }
 
+/* Reasons from the audit and the plan that the business needs a direct route (Conversion stage). Encouraged, not required. */
+var DM_BUYS = ["WhatsApp or DM", "Instagram or TikTok DM", "WhatsApp order", "WhatsApp or call", "Facebook or Instagram message", "WhatsApp or phone order"];
+function directSignals(st, A) {
+  A = A || audit(st); var R = [], site = st.site || {}, b = st.biz || {};
+  if (site.has === "no") R.push("The business has no website, so customers can only buy by messaging or calling.");
+  else if ((site.checks || {}).contact && site.checks.contact !== "y") R.push("The website has no clear way to enquire or book.");
+  if (A.social.plats.some(function (p) { return (p.status === "active" || p.status === "dormant") && ((st.social || {})[p.id] || {}).link === "n"; })) R.push("A social profile has no working link or contact button, so interested people have nowhere to go.");
+  if ((st.objs || []).some(function (o) { return o.type === "sales"; })) R.push("You set a sales objective. Something in the plan has to turn interest into bookings or orders.");
+  var segBuys = []; ((st.tm || {}).segs || []).forEach(function (g) { if (g.target !== "yes") return; chosen((g.s || {}).buy).forEach(function (x) { if (DM_BUYS.indexOf(x) >= 0 && segBuys.indexOf(x) < 0) segBuys.push(x); }); });
+  if (segBuys.length) R.push("Your target segment buys through " + segBuys.join(" and ") + ".");
+  if (b.type === "stay" || b.type === "dive" || b.type === "tours") R.push("Guesthouses, dive centres and tour operators in the Maldives take many bookings through WhatsApp and DMs.");
+  else if (b.type === "food") R.push("Cafes and restaurants take many orders through WhatsApp and delivery apps.");
+  return R;
+}
+
+/* Recommendations for the strategy page: which strategies the audit and the objectives point to, and why. */
+function makeStrategies(A, st, objs) {
+  objs = objs || st.objs || [];
+  var why = {
+    social: "Required for every business. Social score " + A.social.score + "/100. Content builds trust, and paid ads reach people who do not follow the business yet.",
+    web: A.site.none ? "The business has no website. A simple, fast site is the base for search, ads and AI answers." : "Website score " + A.site.score + "/100. " + ((A.site.notes && A.site.notes[0]) || ""),
+    seo: A.gbp.na ? "People search on Google before they buy." : "Google profile score " + (A.gbp.score == null ? "n/a" : A.gbp.score) + "/100. The Google profile and website are how people find the business when they search.",
+    blog: "Helpful articles answer customer questions and bring search traffic to the website.",
+    newsletter: "A regular email keeps past customers and enquirers close, so they come back.",
+    video: "Longer video shows the place or product in detail and is found on YouTube and Google.",
+    direct: "The conversion stage: a one-to-one conversation that turns interest into a booking or order.",
+    banner: "Search ads catch people who are already looking, and display ads follow up visitors.",
+    infl: "Creators give social proof and reach new audiences.",
+    viral: "Shareable ideas lift engagement without a big budget.",
+    affil: "Partners send customers and are paid only on results."
+  };
+  var rec = { social: true, web: A.site.none || A.site.score < 75, seo: !A.gbp.na && (A.gbp.missing || A.gbp.status === "unclaimed" || A.gbp.score < 80), direct: directSignals(st, A).length > 0 };
+  var forObj = {}; objs.forEach(function (o, i) { kpiStrats(o).forEach(function (id) { (forObj[id] = forObj[id] || []).push(i); }); });
+  return { strats: STRATS.map(function (sd) { return { id: sd.id, name: sd.name, theory: sd.theory, on: !!rec[sd.id] || !!forObj[sd.id], why: why[sd.id], objs: forObj[sd.id] || [] }; }) };
+}
 function SBY_get(S, id) { return S.filter(function (x) { return x.id === id; })[0]; }
 /* ---------- budget ---------- */
 function lineCost(l, m, season, cal) {
@@ -674,17 +665,19 @@ function posXY(r) { return r === "lo" ? 22 : r === "hi" ? 78 : 50; }
 
 /* ---------- strategy activities (plain language). basis: Price list = Islandeative price list, At cost = paid straight to the platform or person, Market 2026 = a rough 2026 market estimate, Own time = no cash cost ---------- */
 var STRAT_DESC = {
-  web: "Your own website or blog: the place people check, book or order.",
+  social: "Posts, Reels and stories that keep people interested, plus paid ads aimed at your segment. Required for every business.",
+  web: "Your own website: the place people check, book or order.",
   seo: "Being found on Google and Google Maps when people search.",
-  content: "Regular posts, Reels and stories that keep people interested.",
-  smads: "Paid ads on Facebook, Instagram or TikTok aimed at your segment.",
+  blog: "Helpful articles that answer customer questions and bring visitors from Google.",
+  newsletter: "A regular email to people who agreed to receive it: news, tips and offers.",
+  video: "Longer videos on YouTube: tours, how-tos and stories.",
+  direct: "One-to-one conversations that turn interest into a booking or order: DMs, WhatsApp, Viber, SMS or email.",
   banner: "Paid Google search and display ads.",
-  email: "Messages to people who already know the business: email, SMS, WhatsApp, Viber.",
   infl: "Working with creators your segment already follows.",
   viral: "Giveaways, challenges and shareable posts that spread by word of mouth.",
   affil: "Partners who send you customers for a commission."
 };
-var FITS = ["My segment looks online before buying", "The audit found a gap here", "Low cost for a small business", "Builds trust and reviews", "Reaches new customers", "Brings past customers back", "Strong in the peak season", "Shows the product or place well"];
+var FITS = ["My segment looks online before buying", "The audit found a gap here", "Low cost for a small business", "Builds trust and reviews", "Reaches new customers", "Turns interest into sales", "Brings past customers back", "Strong in the peak season", "Shows the product or place well"];
 var FREQ = { once: "Once", month: "Every month", quarter: "Every 3 months", peak: "Peak season only (Nov to Apr)" };
 var ACTS_BY = {
   web: [
@@ -772,7 +765,7 @@ var SCFG = {
     qs: [
       { k: "bt", q: "How long will the build take?", o: [["1", "1 month"], ["2", "2 months"], ["3", "3 months"]], tip: "The cost is paid across the build months: a deposit, then stage payments." },
       { k: "extras", q: "What will the website include?", multi: true, opt: true, o: function (c) { var o = [["book", "Booking or enquiry page (MVR 3,500)"]]; if (c.travel) o.push(["ota", "Booking.com and Agoda listings set-up (MVR 2,500)"]); if (c.food) o.push(["menu", "Menu design (MVR 1,500)"]); return o; } },
-      { k: "blog", q: "Articles on the website after launch", o: [["0", "None, updates only"], ["1", "1 article a month"], ["2", "2 articles a month"]], hide: function (c) { return c.contentArticles; }, tip: "Articles help people find the business on Google." }
+
     ],
     build: function (v, c) {
       var st = c.st, bt = +v.bt || 1, L = [], b = rng(st, st + bt - 1), price = c.hasSite ? 8000 : 12000, live = Math.min(12, st + bt);
@@ -782,7 +775,6 @@ var SCFG = {
       if (ex.book) L.push(ML("Booking or enquiry page", "Price list", 3500, 1, [b[b.length - 1]]));
       if (ex.ota) L.push(ML("Booking.com and Agoda listings set-up", "Price list", 2500, 1, [st]));
       if (ex.menu) L.push(ML("Menu design", "Price list", 1500, 1, [st]));
-      if (+v.blog && !c.contentArticles) L.push(ML("Website articles (" + v.blog + " a month)", "Market 2026", 400, +v.blog, rng(live, 12)));
       return L;
     }
   },
@@ -803,42 +795,70 @@ var SCFG = {
       return L;
     }
   },
-  content: {
-    flow: ["One idea becomes a pillar piece (article, video or photo set)", "Cut it into carousels with the key points", "Cut the video into short Reels", "Post stories every day: behind the scenes, polls, reposts", "Check what worked and plan next week's idea"],
+  social: {
+    flow: ["Plan content pillars from what the target segment cares about", "Post Reels, carousels and stories on a steady rhythm", "Boost the best posts and run paid ads aimed at the segment", "Send interested people to the direct route or the website", "Check reach, engagement and messages every month, then adjust"],
     qs: [
-      { k: "pillar", q: "What is the pillar piece?", o: [["article", "A blog article on the website"], ["video", "A short video shoot"], ["photos", "A photo set"]], tip: "One main piece that everything else is cut from." },
+      { k: "plats", q: "Which platforms?", multi: true, o: [["ig", "Instagram"], ["fb", "Facebook"], ["tt", "TikTok"]], tip: "Pick where your target segment spends time." },
       { k: "rhythm", q: "Posting rhythm", o: [["starter", "Starter: 1 carousel and 1 Reel a week, stories 3 days a week"], ["steady", "Steady: 2 carousels and 2 Reels a week, stories every day"], ["strong", "Strong: 3 carousels and 3 Reels a week, stories every day"]] },
-      { k: "film", q: "Who films?", o: [["phone", "The business films on phones, the agency edits (Reel MVR 500)"], ["agency", "The agency films and edits (Reel MVR 1,000)"]] },
+      { k: "film", q: "Who films the Reels?", o: [["phone", "The business films on phones, the agency edits (Reel MVR 500)"], ["agency", "The agency films and edits (Reel MVR 1,000)"]] },
       { k: "stories", q: "Who makes the daily stories?", o: [["team", "The business team (no cost)"], ["agency", "The agency (MVR 150 a set)"]] },
-      { k: "shoot", q: "Professional shoot every 3 months?", o: [["yes", "Yes (MVR 2,500 each)"], ["no", "No"]] }
-    ],
-    build: function (v, c) {
-      var st = c.st, ms = rng(st, 12), R = { starter: [2, 4, 4, 13], steady: [4, 9, 9, 30], strong: [4, 13, 13, 30] }[v.rhythm || "steady"], L = [];
-      var pil = { article: ["Pillar: blog article", "Market 2026", 400], video: ["Pillar: video", "Price list", v.film === "agency" ? 1000 : 500], photos: ["Pillar: photo set", "Own time", 0] }[v.pillar || "article"];
-      if (v.pillar === "photos" && v.film === "agency") L.push(ML("Pillar: monthly photo shoot", "Price list", 2500, 1, ms));
-      else L.push(ML(pil[0] + " (" + R[0] + " a month)", pil[1], pil[2], R[0], ms));
-      L.push(ML("Carousels (" + R[1] + " a month)", "Price list", 250, R[1], ms, { disc: true }));
-      L.push(ML("Reels (" + R[2] + " a month)", "Price list", v.film === "agency" ? 1000 : 500, R[2], ms, { disc: true }));
-      L.push(v.stories === "agency" ? ML("Story sets (" + R[3] + " a month)", "Price list", 150, R[3], ms, { disc: true }) : ML("Daily stories by the business team", "Own time", 0, 1, ms));
-      if (v.shoot === "yes") L.push(ML("Professional half-day shoot", "Price list", 2500, 1, [st, st + 3, st + 6, st + 9].filter(function (m) { return m <= 12; })));
-      return L;
-    }
-  },
-  smads: {
-    flow: ["Pick the target segment and one clear offer", "Make 2 or 3 ad versions to test", "Run for 2 weeks, keep the winner", "Retarget people who watched or messaged", "Report the cost per message or booking"],
-    qs: [
-      { k: "plat", q: "Where will the ads run?", multi: true, o: [["meta", "Facebook and Instagram"], ["tiktok", "TikTok"]] },
+      { k: "shoot", q: "Professional photo shoot every 3 months?", o: [["yes", "Yes (MVR 2,500 each)"], ["no", "No"]] },
+      { k: "adplat", q: "Where will the paid ads run?", multi: true, o: [["meta", "Facebook and Instagram"], ["tiktok", "TikTok"]], tip: "Paid ads are part of social media marketing for every business." },
       { k: "pat", q: "When will the ads run?", o: function (c) { return PAT_ALL.filter(function (p) { return p[0] !== "peak" || c.season; }); } },
-      { k: "amt", q: "Ad budget in each month it runs (all platforms)", o: [["1000", "MVR 1,000"], ["2000", "MVR 2,000"], ["3000", "MVR 3,000"], ["5000", "MVR 5,000"]], tip: "Paid straight to Meta or TikTok on the business's card." },
-      { k: "creative", q: "Ad videos", o: [["engine", "Use videos from the content plan (no extra cost)"], ["new", "Make 2 new ad videos for each run (MVR 1,000 each)"]] },
+      { k: "amt", q: "Ad budget in each month the ads run (all platforms)", o: [["1000", "MVR 1,000"], ["2000", "MVR 2,000"], ["3000", "MVR 3,000"], ["5000", "MVR 5,000"]], tip: "Paid straight to Meta or TikTok on the business's card." },
+      { k: "creative", q: "Ad videos", o: [["engine", "Use Reels from the content plan (no extra cost)"], ["new", "Make 2 new ad videos for each run (MVR 1,000 each)"]] },
       { k: "who", q: "Who runs the ads?", o: [["team", "The business team (no cost)"], ["agency", "An agency (about MVR 1,500 a month)"]] }
     ],
     build: function (v, c) {
-      var ms = pMonths(v.pat || "always", c.st, c.lab), pl = Object.keys(v.plat || {}).filter(function (k) { return v.plat[k]; }), L = [], amt = +v.amt || 0;
-      pl.forEach(function (p) { L.push(ML("Ad spend on " + (p === "meta" ? "Facebook and Instagram" : "TikTok"), "At cost", Math.round(amt / pl.length), 1, ms)); });
-      if (v.creative === "new") { var firsts = ms.filter(function (m, i) { return i === 0 || ms[i - 1] !== m - 1; }); L.push(ML("New ad videos (2 for each run)", "Price list", 1000, 2, firsts)); }
-      if (v.who === "agency") L.push(ML("Ad management", "Market 2026", 1500, 1, ms));
+      var st = c.st, ms = rng(st, 12), R = { starter: [4, 4, 13], steady: [9, 9, 30], strong: [13, 13, 30] }[v.rhythm || "steady"], L = [];
+      L.push(ML("Carousels (" + R[0] + " a month)", "Price list", 250, R[0], ms, { disc: true }));
+      L.push(ML("Reels (" + R[1] + " a month)", "Price list", v.film === "agency" ? 1000 : 500, R[1], ms, { disc: true }));
+      L.push(v.stories === "agency" ? ML("Story sets (" + R[2] + " a month)", "Price list", 150, R[2], ms, { disc: true }) : ML("Daily stories by the business team", "Own time", 0, 1, ms));
+      if (v.shoot === "yes") L.push(ML("Professional half-day shoot", "Price list", 2500, 1, [st, st + 3, st + 6, st + 9].filter(function (m) { return m <= 12; })));
+      var am = pMonths(v.pat || "always", st, c.lab), pl = Object.keys(v.adplat || {}).filter(function (k) { return v.adplat[k]; }), amt = +v.amt || 0;
+      pl.forEach(function (p) { L.push(ML("Ad spend on " + (p === "meta" ? "Facebook and Instagram" : "TikTok"), "At cost", Math.round(amt / pl.length), 1, am)); });
+      if (pl.length && v.creative === "new") { var firsts = am.filter(function (m, i) { return i === 0 || am[i - 1] !== m - 1; }); L.push(ML("New ad videos (2 for each run)", "Price list", 1000, 2, firsts)); }
+      if (pl.length && v.who === "agency") L.push(ML("Ad management", "Market 2026", 1500, 1, am));
       return L;
+    }
+  },
+  blog: {
+    flow: ["List the questions customers ask before they buy", "Write one helpful article for each question", "Add photos, prices and a clear next step (book, order or message)", "Share each article on social media and in the newsletter", "Check which articles bring visitors from Google"],
+    qs: [
+      { k: "n", q: "Articles a month", o: [["1", "1 a month"], ["2", "2 a month"], ["4", "4 a month"]] },
+      { k: "who", q: "Who writes them?", o: [["team", "The business team (no cost)"], ["agency", "A writer or agency (about MVR 400 each)"]] },
+      { k: "topics", q: "Topics", multi: true, opt: true, o: [["faq", "Answers to common questions"], ["guide", "Guides and how-tos"], ["local", "Local tips and places"], ["story", "Customer stories"], ["behind", "Behind the scenes"]] }
+    ],
+    build: function (v, c) {
+      var n = +v.n || 1, st = c.hasSite ? c.st : Math.max(c.st, c.webLive || c.st);
+      return [ML("Blog articles (" + n + " a month)", v.who === "team" ? "Own time" : "Market 2026", v.who === "team" ? 0 : 400, n, rng(Math.min(12, st), 12))];
+    }
+  },
+  newsletter: {
+    flow: ["Collect email addresses with permission: bookings, website, events", "Choose a simple template with the business's look", "Send useful news, tips and offers on a fixed day", "Link each email to the website or the direct route", "Check opens, clicks and replies, then improve the next one"],
+    qs: [
+      { k: "rh", q: "How often?", o: [["1", "1 a month"], ["2", "2 a month"]] },
+      { k: "list", q: "How will you collect email addresses?", multi: true, o: [["book", "When customers book or order"], ["site", "A sign-up box on the website"], ["wa", "Asking on WhatsApp or in DMs"], ["event", "At events or in the shop"]] },
+      { k: "design", q: "Who makes each email?", o: [["team", "The business team with a free template (no cost)"], ["agency", "The agency (MVR 150 a send)"]] },
+      { k: "plat", q: "Sending platform", o: [["free", "A free plan (for example Mailchimp or Brevo free)"], ["paid", "A paid plan (about MVR 300 a month)"]] }
+    ],
+    build: function (v, c) {
+      var ms = rng(Math.min(12, c.st + 1), 12), n = +v.rh || 1, L = [];
+      L.push(v.design === "agency" ? ML("Newsletter design and send (" + n + " a month)", "Price list", 150, n, ms) : ML("Newsletter by the business team (" + n + " a month)", "Own time", 0, n, ms));
+      if (v.plat === "paid") L.push(ML("Email platform subscription", "Market 2026", 300, 1, rng(c.st, 12)));
+      return L;
+    }
+  },
+  video: {
+    flow: ["Pick video ideas the segment searches for: tours, how-tos, stories", "Film and edit each video", "Post on YouTube with a clear title and description", "Cut short clips for Reels and stories", "Check views and watch time each month"],
+    qs: [
+      { k: "n", q: "Videos", o: [["q", "1 every 3 months"], ["1", "1 a month"], ["2", "2 a month"]] },
+      { k: "film", q: "Who films and edits?", o: [["phone", "The business films, the agency edits (about MVR 500 each)"], ["agency", "The agency films and edits (about MVR 1,500 each)"]] },
+      { k: "kind", q: "Type of video", multi: true, opt: true, o: [["tour", "A tour of the place or product"], ["how", "How-to or tips"], ["story", "Customer stories"], ["behind", "Behind the scenes"]] }
+    ],
+    build: function (v, c) {
+      var ms = v.n === "q" ? [c.st, c.st + 3, c.st + 6, c.st + 9].filter(function (m) { return m <= 12; }) : rng(c.st, 12), n = v.n === "2" ? 2 : 1;
+      return [ML("Videos (" + (v.n === "q" ? "1 every 3 months" : n + " a month") + ")", "Market 2026", v.film === "agency" ? 1500 : 500, n, ms)];
     }
   },
   banner: {
@@ -856,21 +876,30 @@ var SCFG = {
       return L;
     }
   },
-  email: {
-    flow: ["Collect contacts with permission: bookings, WhatsApp, forms", "Set up templates and contact lists once", "Send useful messages to each segment", "Run a campaign at key moments", "Check opens, clicks and replies"],
+  direct: {
+    flow: ["Pick the route your segment already uses: DM, WhatsApp, Viber, SMS or email", "Give people a reason to message: an offer, a price list or a quick answer", "Reply fast, answer questions and take the booking or order in the chat", "Follow up people who did not buy yet", "After the sale: ask for a review and invite them back"],
     qs: [
-      { k: "ch", q: "Which channels?", multi: true, o: [["email", "Email"], ["sms", "SMS"], ["wa", "WhatsApp"], ["viber", "Viber"]] },
-      { k: "rh", q: "Regular messages", o: [["1", "1 a month"], ["2", "2 a month"], ["4", "Every week"]], tip: "Each message set is sent across every channel you picked (MVR 150 a set)." },
+      { k: "routes", q: "Which direct routes?", multi: true, o: [["dm", "Instagram or Facebook DM campaign (people comment a word, the business replies in DM)"], ["ctwa", "Click-to-WhatsApp ads (the ad opens a WhatsApp chat)"], ["wab", "WhatsApp Business catalogue and broadcasts"], ["viber", "Viber messages"], ["sms", "SMS offers"], ["emailseq", "Email sequences (welcome, offer, reminder)"], ["retarget", "Retargeting ads to people who visited or messaged"]] },
+      { k: "offer", q: "What will make people message?", o: [["discount", "A first-time discount"], ["extra", "A free extra or add-on"], ["package", "A limited-time package"], ["quote", "A free quote or consultation"], ["early", "An early-booking price"]] },
+      { k: "reply", q: "How fast will the business reply?", o: [["1h", "Within 1 hour"], ["4h", "Within 4 hours"], ["day", "The same day"]], tip: "Fast replies turn more chats into sales." },
+      { k: "who", q: "Who replies and follows up?", o: [["team", "The business team (no cost)"], ["agency", "An agency or virtual assistant (about MVR 1,500 a month)"]] },
+      { k: "rh", q: "Broadcast messages (offers and news)", o: [["0", "None, replies only"], ["1", "1 a month"], ["2", "2 a month"], ["4", "Every week"]], tip: "Only to people who agreed to receive them. MVR 150 a message set." },
+      { k: "amt", q: "Ad budget for click-to-WhatsApp or retargeting ads, each month", o: [["0", "None"], ["1000", "MVR 1,000"], ["2000", "MVR 2,000"], ["3000", "MVR 3,000"]], hide: function (c) { var r = (c.cfg || {}).routes || {}; return !r.ctwa && !r.retarget; } },
       { k: "mom", q: "Campaigns for key moments", multi: true, opt: true, o: function (c) { return MOMENTS.filter(function (x) { return x[0] !== "peak" || c.season; }).map(function (x) { return [x[1], x[1]]; }); }, tip: "Each campaign month costs MVR 2,500 for all its messages and designs. Months are approximate." },
-      { k: "plat", q: "Sending platform", o: [["free", "Free tools (WhatsApp Business, free email plan)"], ["paid", "Paid platform (about MVR 300 a month)"]] }
+      { k: "after", q: "After the sale (Loyalty stage)", multi: true, opt: true, o: [["review", "Ask for a review"], ["thanks", "Thank-you message with a repeat offer"], ["refer", "A reward for referring a friend"], ["date", "A birthday or anniversary offer"]] },
+      { k: "result", q: "What counts as a result?", o: [["msgs", "Messages a month"], ["sales", "Bookings or orders from chats"], ["rate", "Share of chats that become a sale"]] }
     ],
     build: function (v, c) {
-      var st = c.st, L = [];
-      L.push(ML("Broadcast set-up with templates", "Price list", 2500, 1, [st]));
-      L.push(ML("Regular messages (" + (+v.rh || 1) + " a month)", "Price list", 150, +v.rh || 1, rng(Math.min(12, st + 1), 12)));
+      var st = c.st, ms = rng(st, 12), r = v.routes || {}, L = [], n = +v.rh || 0;
+      if (r.dm || r.wab || r.viber || r.ctwa) L.push(ML("Replying to chats and taking bookings or orders", v.who === "agency" ? "Market 2026" : "Own time", v.who === "agency" ? 1500 : 0, 1, ms));
+      if (n && (r.wab || r.viber || r.sms || r.emailseq)) L.push(ML("Broadcast messages (" + n + " a month)", "Price list", 150, n, rng(Math.min(12, st + 1), 12)));
+      if (r.sms) L.push(ML("SMS sending bundle", "Market 2026", 300, 1, ms));
+      if (r.emailseq) { L.push(ML("Email sequence set-up with templates", "Price list", 2500, 1, [st])); L.push(ML("Email platform subscription", "Market 2026", 300, 1, ms)); }
+      var amt = +v.amt || 0, ad = [r.ctwa ? "click-to-WhatsApp" : "", r.retarget ? "retargeting" : ""].filter(Boolean);
+      if (amt && ad.length) L.push(ML("Ad spend: " + ad.join(" and ") + " ads", "At cost", amt, 1, ms));
       var mm = momentMonths(v.mom, c.lab).filter(function (m) { return m >= st; });
       if (mm.length) L.push(ML("Key-moment campaigns", "Price list", 2500, 1, mm));
-      if (v.plat === "paid") L.push(ML("Sending platform subscription", "Market 2026", 300, 1, rng(st, 12)));
+      if (chosen(v.after).length) L.push(ML("After-sale messages: " + chosen(v.after).length + " kind" + (chosen(v.after).length > 1 ? "s" : ""), "Own time", 0, 1, ms));
       return L;
     }
   },
@@ -923,18 +952,20 @@ var SCFG = {
 };
 function scQs(id, c) { return SCFG[id].qs.filter(function (q) { return !(q.hide && q.hide(c)); }).map(function (q) { return { k: q.k, q: q.q, multi: !!q.multi, opt: !!q.opt, tip: q.tip, o: typeof q.o === "function" ? q.o(c) : q.o }; }); }
 function scLines(id, v, c) { return SCFG[id].build(v || {}, c).filter(Boolean); }
-var OBJ_TYPES = [["aware", "Awareness: more people know the business"], ["engage", "Engagement: people interact and trust it"], ["sales", "Leads and sales: people enquire, book or buy"]];
+var OBJ_TYPES = [["aware", "Awareness: more people know the business"], ["engage", "Engagement: people interact and start to trust it"], ["sales", "Sales: people enquire, book, order or buy"], ["loyal", "Loyalty: customers come back and recommend it"]];
+var TYPE_STAGE = { aware: "aware", engage: "consider", sales: "convert", loyal: "loyal" };
 var KPIS = {
-  aware: [["Instagram followers", ""], ["TikTok followers", ""], ["Monthly reach", ""], ["Google profile views a month", ""], ["Website visitors a month", ""]],
-  engage: [["Engagement rate", "%"], ["Saves and shares per post", ""], ["Messages a month", ""], ["Reviews a month", ""], ["Average review rating", " points"]],
-  sales: [["Bookings or orders a month", ""], ["Share of bookings made direct", "%"], ["Website enquiries a month", ""], ["Conversion rate", "%"], ["Monthly online sales", " MVR"]]
+  aware: [["Instagram followers", ""], ["TikTok followers", ""], ["Facebook followers", ""], ["Monthly reach", ""], ["Google profile views a month", ""], ["Website visitors a month", ""], ["YouTube views a month", ""]],
+  engage: [["Engagement rate", "%"], ["Saves and shares per post", ""], ["Messages a month", ""], ["Reviews a month", ""], ["Average review rating", " points"], ["Email subscribers", ""]],
+  sales: [["Bookings or orders a month", ""], ["Enquiries a month (DM, WhatsApp, website)", ""], ["Share of bookings made direct", "%"], ["Chat-to-sale conversion rate", "%"], ["Monthly online sales", " MVR"]],
+  loyal: [["Repeat customers a month", ""], ["Share of customers who come back", "%"], ["Google reviews (count)", ""], ["Referrals a month", ""], ["Email open rate", "%"]]
 };
 
 function stratCtx(st, sid) {
   var T = TBY[(st.biz || {}).type] || TBY.service, P = st.plan || {}, cfg = P.cfg || {}, on = {}; (P.strats || []).forEach(function (x) { on[x.id] = x.on; });
-  var w = cfg.web || {}, ct = cfg.content || {};
+  var w = cfg.web || {};
   return { st: clamp(+((cfg[sid] || {}).st) || 1, 1, 12), lab: monthLabels((st.biz || {}).start), season: !!T.season, travel: !!T.travel, food: T.group === "food", hasSite: (st.site || {}).has === "yes",
-    webOn: !!on.web, webLive: on.web ? Math.min(12, (+w.st || 1) + (+w.bt || 1)) : 0, contentArticles: !!on.content && (ct.pillar || "") === "article" };
+    webOn: !!on.web, webLive: on.web ? Math.min(12, (+w.st || 1) + (+w.bt || 1)) : 0, contentArticles: !!on.blog, cfg: cfg[sid] || {} };
 }
 function scChoices(id, v, c) {
   return scQs(id, c).map(function (q) {
@@ -945,12 +976,14 @@ function scChoices(id, v, c) {
 }
 
 var MOCKUPS = {
+  social: ["One week of social content: 2 carousels, a Reel cover or storyboard and 2 stories", "One paid ad for each platform you chose, with the headline, image or video and the call to action"],
   web: ["Homepage on desktop and on mobile", "The booking or enquiry page", "A sitemap of the main pages"],
   seo: ["Google Business Profile before and after", "An example page title and description for one key page"],
-  content: ["One week of the content engine: the pillar piece, 2 carousels, a Reel cover or storyboard and 2 stories"],
-  smads: ["One ad for each platform you chose, with the headline, image or video and the call to action"],
+  blog: ["One article outline: title, headings and the call to action"],
+  newsletter: ["One newsletter email: subject line, main story, offer and button"],
+  video: ["A storyboard or script for one video, with the YouTube title and thumbnail"],
+  direct: ["The direct route in action: the offer post or ad, the first reply message, and the follow-up message"],
   banner: ["A Google search ad (headlines and text)", "A display banner"],
-  email: ["One message template for a key-moment campaign (email, WhatsApp or SMS)"],
   infl: ["The brief you would send a creator", "A sample creator post"],
   viral: ["The campaign post with the rules and the prize"],
   affil: ["A partner offer card with the code or link"]
@@ -968,7 +1001,117 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { hasLoc: hasLoc, spaced: spaced, MOCKUPS: MOCKUPS, SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+/* ---------- SMART objectives: parts, sentence, realistic check ---------- */
+var VERBS = ["Increase", "Grow", "Raise", "Reduce", "Improve"];
+var OBJ_CHANS = ["Instagram", "Facebook", "TikTok", "YouTube", "the website", "the Google profile", "WhatsApp", "email", "booking sites", "all channels"];
+var BASE_SRC = [["audit", "My audit (date checked)"], ["insights", "Platform insights or analytics"], ["records", "The business's own records"], ["estimate", "My estimate (I will explain it)"]];
+var HOW = ["weekly Reels and carousels", "paid social ads aimed at the segment", "a DM offer campaign", "fast WhatsApp replies and follow-ups", "SEO and Google profile updates", "helpful blog articles", "a monthly email newsletter", "a YouTube video series", "an influencer campaign", "a review request after each sale", "a new booking or enquiry page"];
+var REAL = ["The starting number is small, so growth is faster", "Paid ads will speed it up", "Similar businesses reach this level", "The busy season falls in this period", "The business already has demand to work with", "The audit shows an easy gap to fix", "The milestones are spread over the year"];
+var SMART_HELP = {
+  S: ["Specific", "What changes, on which channel, for which target segment."],
+  M: ["Measurable", "The KPI, the baseline now (and where it came from) and the target."],
+  A: ["Achievable", "How big the change is, what will drive it, and why it is realistic."],
+  R: ["Relevant", "Which audit gap it fixes and which funnel stage it serves."],
+  T: ["Time-bound", "The month it is done by, with quarterly milestones."]
+};
+function fmtNum(v, unit) { var n = num(v); if (n == null) return String(v == null ? "" : v); return n.toLocaleString("en-US") + (unit === "%" ? "%" : unit === " MVR" ? " MVR" : unit === " points" ? "" : ""); }
+var MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function longMonth(l) { return MONTHS_LONG[l.cal - 1] + " 20" + l.label.slice(-2); }
+function segById(st, id) { return (((st.tm || {}).segs) || []).filter(function (g) { return g.id === id; })[0]; }
+/* The sentence the tool builds from the parts. The student can edit it after. */
+function objSentence(o, st) {
+  var verb = o.verb || (num(o.target) != null && num(o.base) != null && num(o.target) < num(o.base) ? "Reduce" : "Increase");
+  var g = segById(st, o.seg), lab = monthLabels((st.biz || {}).start)[clamp((+o.deadline || 12) - 1, 0, 11)];
+  var t = verb + " " + (o.kpi ? String(o.kpi).charAt(0).toLowerCase() + String(o.kpi).slice(1) : "the KPI");
+  if (o.chan && o.chan !== "all channels") t += " on " + o.chan;
+  if (g && g.name) t += " among " + g.name;
+  t += " from " + (num(o.base) != null ? fmtNum(o.base, o.unit) : "the baseline") + " to " + (num(o.target) != null ? fmtNum(o.target, o.unit) : "the target");
+  t += " by month " + (+o.deadline || 12) + " (" + longMonth(lab) + ")";
+  var how = chosen(o.how); if (how.length) t += " through " + andJoin(how);
+  return t + ".";
+}
+/* Realistic check over the 12-month plan. Rules of thumb for small businesses; the student explains anything bigger. */
+function realism(o) {
+  var b = num(o.base), t = num(o.target), m = clamp(+o.deadline || 12, 1, 12), k = String(o.kpi || "").toLowerCase(), u = o.unit || "";
+  if (b == null || t == null) return { level: "na", msg: "Enter the baseline and the target to check if it is realistic." };
+  if (t === b) return { level: "low", msg: "The target is the same as the baseline." };
+  var down = t < b, R = function (level, msg, sug) { return { level: level, msg: msg, suggest: sug == null ? null : sug }; };
+  if (/rating/.test(k) || u === " points") {
+    if (t > 5) return R("veryhigh", "Ratings stop at 5. Use a target of 5 or less.", Math.min(5, Math.round((b + 0.3) * 10) / 10));
+    if (t - b > 0.5) return R("high", "A rating moves slowly. More than half a star in a year is hard.", Math.min(5, Math.round((b + 0.3) * 10) / 10));
+    return R("ok", "Realistic: a rating usually moves by a few tenths a year.");
+  }
+  if (u === "%") {
+    var pts = t - b;
+    if (/engagement/.test(k)) { if (b > 0 && t > b * 2.5 && pts > 1) return R("veryhigh", "More than 2.5 times the engagement rate in one year is very ambitious.", Math.round(b * 1.8 * 100) / 100); if (b > 0 && t > b * 1.8) return R("high", "Ambitious. Explain which content and ads will lift engagement this much.", Math.round(b * 1.6 * 100) / 100); return R("ok", "Realistic for a year of steady content."); }
+    if (t > 100) return R("veryhigh", "A percentage cannot go above 100.", Math.min(100, b + 10));
+    if (Math.abs(pts) > 20) return R("veryhigh", "A change of " + Math.round(Math.abs(pts)) + " percentage points is very large for one year.", Math.round(b + (down ? -8 : 8)));
+    if (Math.abs(pts) > 10) return R("high", "Ambitious: " + Math.round(Math.abs(pts)) + " percentage points. Say what will make it happen.", Math.round(b + (down ? -6 : 6)));
+    return R("ok", "Realistic: a change of " + Math.round(Math.abs(pts) * 10) / 10 + " percentage points.");
+  }
+  if (down) return Math.abs(t - b) / (b || 1) > 0.6 ? R("high", "Cutting it by more than 60% is very ambitious.", Math.round(b * 0.6)) : R("ok", "Realistic. Explain in your report why less is better here.");
+  if (b === 0) {
+    var perM = t / m;
+    if (/follower/.test(k)) return perM > 400 ? R("veryhigh", "About " + Math.round(perM) + " new followers a month from zero is very ambitious.", Math.round(150 * m / 10) * 10) : perM > 150 ? R("high", "About " + Math.round(perM) + " new followers a month from zero. Paid ads will be needed.", Math.round(150 * m / 10) * 10) : R("ok", "Realistic for a new account with steady posting and some ads.");
+    return R("ok", "Starting from zero. Explain in your report how you chose the target.");
+  }
+  if (/review/.test(k) && !/rating/.test(k)) { var add = (t - b) / m; return add > 20 ? R("veryhigh", "About " + Math.round(add) + " new reviews a month is very ambitious for a small business.", Math.round(b + 8 * m)) : add > 8 ? R("high", "About " + Math.round(add) + " new reviews a month. Ask every customer.", Math.round(b + 6 * m)) : R("ok", "Realistic: about " + Math.max(1, Math.round(add)) + " new reviews a month."); }
+  var g = Math.pow(t / b, 1 / m) - 1, okG = 0.06, hiG = 0.12;
+  if (/follower/.test(k)) { okG = 0.08; hiG = 0.15; }
+  else if (/visitor|views|reach|traffic|profile/.test(k)) { okG = 0.10; hiG = 0.20; }
+  else if (/booking|order|sale|enquir|message|repeat|referr|subscriber/.test(k)) { okG = 0.04; hiG = 0.08; }
+  var total = Math.round((t / b - 1) * 100), sug = Math.round(b * Math.pow(1 + okG, m)), sugTxt = sug >= 10 ? Math.round(sug / 10) * 10 : sug;
+  if (total < 3) return R("low", "Only +" + total + "%. That is a very small change for a whole objective.", sugTxt);
+  if (g > hiG) return R("veryhigh", "+" + total.toLocaleString("en-US") + "% by month " + m + " is about " + Math.round(g * 100) + "% growth every month. That is very ambitious for a small business.", sugTxt);
+  if (g > okG) return R("high", "+" + total.toLocaleString("en-US") + "% by month " + m + " is ambitious (about " + Math.round(g * 100) + "% a month). Explain what will drive it.", sugTxt);
+  return R("ok", "Realistic: +" + total.toLocaleString("en-US") + "% by month " + m + ", about " + Math.max(1, Math.round(g * 100)) + "% a month.");
+}
+/* The five SMART parts with the student's own evidence. ok = filled in. */
+function smartParts(o, st) {
+  var g = segById(st, o.seg), b = num(o.base), t = num(o.target), rz = realism(o), src = (BASE_SRC.filter(function (x) { return x[0] === o.baseSrc; })[0] || [])[1];
+  var stage = FBY[TYPE_STAGE[o.type]];
+  return {
+    S: { ok: !!(o.kpi && o.chan && g), text: [o.verb || "", o.kpi || "", o.chan ? "on " + o.chan : "", g ? "for " + g.name : ""].filter(Boolean).join(" ") || "", miss: !o.chan ? "Pick the channel." : !g ? "Pick the target segment." : "" },
+    M: { ok: !!(o.kpi && b != null && t != null), text: (o.kpi || "KPI") + ": " + (b != null ? fmtNum(b, o.unit) : "?") + " now" + (src ? " (" + src.toLowerCase() + ")" : "") + ", target " + (t != null ? fmtNum(t, o.unit) : "?"), miss: b == null || t == null ? "Enter the baseline and the target." : !o.baseSrc ? "Say where the baseline comes from." : "" },
+    A: { ok: rz.level === "ok" || ((rz.level === "high" || rz.level === "low") && chosen(o.why).length > 0) || (rz.level === "veryhigh" && chosen(o.why).length > 1), text: rz.msg + (chosen(o.how).length ? " Driven by " + andJoin(chosen(o.how)) + "." : "") + (chosen(o.why).length ? " Why it can work: " + chosen(o.why).join("; ").toLowerCase() + "." : ""), level: rz.level, miss: !chosen(o.how).length ? "Pick what will drive it." : !chosen(o.why).length ? "Pick why it is realistic." : "" },
+    R: { ok: !!(o.gap && stage), text: (o.gap ? "Fixes: " + o.gap : "") + (stage ? (o.gap ? ". " : "") + "Funnel stage: " + stage[1] + " (" + stage[2].toLowerCase() + ")" : ""), miss: !o.type ? "Pick the kind of objective." : !o.gap ? "Pick the audit gap it fixes." : "" },
+    T: { ok: !!o.deadline, text: "Done by month " + (+o.deadline || 12) + " (" + longMonth(monthLabels((st.biz || {}).start)[clamp((+o.deadline || 12) - 1, 0, 11)]) + "), checked every quarter", miss: "" }
+  };
+}
+/* Audit gaps a student can pick for Relevant */
+function gapList(A) { var out = A.findings.slice(0, 8).map(function (f) { return f.text.split(". ")[0].replace(/\.$/, ""); }); out.push("Overall digital visibility score of " + A.overall + "/100"); return out.filter(function (x, i, a) { return x && a.indexOf(x) === i; }); }
+
+/* ---------- moving saved work to the new plan structure (version 2) ---------- */
+var PLAN_V = 2;
+function migrate(st) {
+  if (!st || (st.v || 1) >= PLAN_V) return false;
+  var changed = false, P = st.plan;
+  if (P && P.strats) {
+    var old = {}; P.strats.forEach(function (x) { old[x.id] = x; });
+    var cfg = P.cfg || {}, ncfg = {};
+    var merge = function (dst, src) { if (!src) return; ["links", "segl", "fits"].forEach(function (k) { dst[k] = dst[k] || {}; Object.keys(src[k] || {}).forEach(function (x) { if (src[k][x]) dst[k][x] = true; }); }); if (src.note) dst.note = (dst.note ? dst.note + " " : "") + src.note; };
+    var N = STRATS.map(function (sd) { var o = old[sd.id] && ["web", "seo", "banner", "infl", "viral", "affil"].indexOf(sd.id) >= 0 ? old[sd.id] : null; return { id: sd.id, name: sd.name, theory: sd.theory, why: "", rec: false, on: !!(o && o.on), links: o ? o.links || {} : {}, segl: o ? o.segl || {} : {}, fits: o ? o.fits || {} : {}, note: o ? o.note || "" : "" }; });
+    var NB = {}; N.forEach(function (x) { NB[x.id] = x; });
+    ["web", "seo", "banner", "infl", "viral", "affil"].forEach(function (k) { if (cfg[k]) ncfg[k] = cfg[k]; });
+    var c = cfg.content || {}, a = cfg.smads || {}, e = cfg.email || {};
+    NB.social.on = true; merge(NB.social, old.content); merge(NB.social, old.smads);
+    ncfg.social = { st: c.st || a.st, rhythm: c.rhythm, film: c.film, stories: c.stories, shoot: c.shoot, adplat: a.plat, pat: a.pat, amt: a.amt, creative: a.creative, who: a.who };
+    if (old.content && old.content.on && c.pillar === "article") { NB.blog.on = true; ncfg.blog = { st: c.st, n: "1" }; merge(NB.blog, old.content); }
+    if (old.content && old.content.on && c.pillar === "video") { NB.video.on = true; ncfg.video = { st: c.st, n: "1", film: c.film }; merge(NB.video, old.content); }
+    if (cfg.web && +cfg.web.blog) { NB.blog.on = true; ncfg.blog = { st: cfg.web.st, n: String(cfg.web.blog) }; }
+    if (old.email && old.email.on) {
+      var ch = e.ch || {}, routes = {}; if (ch.wa) routes.wab = true; if (ch.viber) routes.viber = true; if (ch.sms) routes.sms = true; if (ch.email) routes.emailseq = true;
+      NB.direct.on = true; merge(NB.direct, old.email); ncfg.direct = { st: e.st, routes: routes, rh: e.rh, mom: e.mom };
+    }
+    Object.keys(ncfg).forEach(function (k) { Object.keys(ncfg[k]).forEach(function (q) { if (ncfg[k][q] === undefined) delete ncfg[k][q]; }); });
+    P.strats = N; P.cfg = ncfg; P.lines = []; changed = true;
+  }
+  (st.objs || []).forEach(function (o) { if (o.text && o.textEdited === undefined) { o.textEdited = true; changed = true; } });
+  st.model = null; st.v = PLAN_V; st.newsPending = changed || !!st.newsPending;
+  return changed;
+}
+
+G.SA = { FUNNEL: FUNNEL, FBY: FBY, MIN_STRATS: MIN_STRATS, kpiStrats: kpiStrats, directSignals: directSignals, TYPE_STAGE: TYPE_STAGE, VERBS: VERBS, OBJ_CHANS: OBJ_CHANS, BASE_SRC: BASE_SRC, HOW: HOW, REAL: REAL, SMART_HELP: SMART_HELP, objSentence: objSentence, realism: realism, smartParts: smartParts, gapList: gapList, fmtNum: fmtNum, longMonth: longMonth, migrate: migrate, PLAN_V: PLAN_V, hasLoc: hasLoc, spaced: spaced, MOCKUPS: MOCKUPS, SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
