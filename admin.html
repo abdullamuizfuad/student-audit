@@ -17,6 +17,10 @@
   .ad-tbl-wrap{overflow-x:auto}
   .ad-tbl{min-width:760px}
   .ad-tbl td,.ad-tbl th{vertical-align:top}
+  .ad-check{padding:12px 14px;border-radius:12px;margin:0 0 12px}
+  .ad-check.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+  .ad-check.bad{background:color-mix(in srgb,var(--err) 14%,transparent)}
+  .ad-hit td{background:color-mix(in srgb,var(--ok) 18%,transparent);font-weight:700}
   .ad-dup{background:color-mix(in srgb,var(--err) 14%,transparent);font-weight:700}
   .ad-msg{font-weight:600;margin:8px 0 0}
   .ad-msg.bad{color:var(--err)}
@@ -42,6 +46,7 @@
   <div id="adApp" hidden>
     <section class="sa-card">
       <h2>Students</h2>
+      <p class="ad-check" id="adCheck" role="status" hidden></p>
       <div class="ad-stats" id="adStats"></div>
       <div class="ad-tbl-wrap" tabindex="0" role="region" aria-label="Students"><table class="sa-tbl ad-tbl" id="adTbl"></table></div>
       <p class="sa-ms">Same code for two students = the same work was handed in. Forgotten PIN: open <a href="https://console.firebase.google.com/project/mkt303-audit/authentication/users" target="_blank" rel="noopener">Firebase, Authentication, Users</a>, delete that student's login (s0xxxxx@student.mnu.edu.mv), and tell them to use "First time: create a PIN". Their work is kept.</p>
@@ -63,6 +68,6 @@
 <script src="vendor/firebase-auth-compat.js?v=1"></script>
 <script src="vendor/firebase-firestore-compat.js?v=1"></script>
 <script src="cloud.js?v=1"></script>
-<script src="admin.js?v=1"></script>
+<script src="admin.js?v=2"></script>
 </body>
 </html>

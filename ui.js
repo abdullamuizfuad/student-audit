@@ -190,14 +190,48 @@ function viewSite() {
   h += '<p class="sa-lede">Open the website on your phone and on a computer. Answer each check from what you see. Use the free tools if you are unsure.</p>' +
     '<div class="sa-card"><div class="sa-grid">' + txt("site.url", "Website address", { wide: true, ph: "example.com" }) + "</div>";
   if (dom) h += '<div class="sa-links"><a href="https://pagespeed.web.dev/analysis?url=' + encodeURIComponent(u) + '" target="_blank" rel="noopener">PageSpeed Insights</a><a href="https://search.google.com/test/rich-results?url=' + encodeURIComponent(u) + '" target="_blank" rel="noopener">Rich Results Test</a><a href="' + u + '/robots.txt" target="_blank" rel="noopener">robots.txt</a><a href="' + u + '/sitemap.xml" target="_blank" rel="noopener">sitemap.xml</a><a href="https://www.google.com/search?q=site%3A' + encodeURIComponent(dom) + '" target="_blank" rel="noopener">site: search</a></div>';
+  if (dom) h += autoCard(dom);
   h += '<div class="sa-grid">' + txt("site.perf", "PageSpeed mobile Performance score", { opt: true, mode: "numeric", hint: "If you ran PageSpeed Insights, type the mobile score (0 to 100). It answers the speed check for you." }) + txt("site.seo", "PageSpeed SEO score", { opt: true, mode: "numeric" }) + "</div></div>";
   SA.SITE_GROUPS.forEach(function (g) {
     h += '<div class="sa-card"><h3>' + g.name + "</h3>";
     if (g.id === "geo") h += '<p class="sa-sub">Google says no special markup is needed for AI search features. These checks cover the normal good practice that helps both search and AI answers.</p>';
-    SA.SITE_CHECKS.filter(function (c) { return c.g === g.id; }).forEach(function (c) { if (c.id === "fast" && SA.num(s.perf) != null) return; h += yn("site.checks." + c.id, c.q, c.tip); });
+    SA.SITE_CHECKS.filter(function (c) { return c.g === g.id; }).forEach(function (c) { if (c.id === "fast" && SA.num(s.perf) != null) return; h += yn("site.checks." + c.id, c.q, c.tip + peekTip(c.id, dom)); });
     h += "</div>";
   });
   return h;
+}
+/* automatic website tests (apis.js): evidence for the student, who still answers each check */
+var AUTO_BUSY = false;
+function freshFor(x, dom) { return x && x.dom === dom; }
+function peekTip(id, dom) {
+  var p = freshFor(S.site.peek, dom) ? S.site.peek : null; if (!p) return "";
+  if (id === "title") return p.title ? " The tool read the tab title: \u201c" + p.title + "\u201d. Does it say what the business is and where?" : " The tool found no tab title.";
+  if (id === "meta") return p.desc ? " The tool read this description: \u201c" + p.desc.slice(0, 220) + "\u201d. Search the name on Google to see if it shows." : " The tool found no description on the home page.";
+  return "";
+}
+function autoCard(dom) {
+  var a = freshFor(S.site.auto, dom) ? S.site.auto : null, p = freshFor(S.site.peek, dom) ? S.site.peek : null, h = '<div class="sa-auto"><h3>Let the tool test it</h3>';
+  h += '<p class="sa-sub">Runs Google PageSpeed Insights on mobile and reads the home page title, description and a screenshot. It takes up to a minute. You still answer every check yourself.</p>';
+  if (a) h += '<p class="sa-auto-r"><b>PageSpeed, mobile (' + esc(a.at) + "):</b> Performance " + (a.perf == null ? "-" : a.perf) + "/100, SEO " + (a.seo == null ? "-" : a.seo) + "/100" + (a.lcp ? ", main content shows after " + a.lcp + " seconds" : "") + ". The scores are filled in below.</p>";
+  if (p) h += '<p class="sa-auto-r"><b>Home page (' + esc(p.at) + "):</b> title \u201c" + esc(p.title || "none") + "\u201d" + (p.desc ? ", description \u201c" + esc(p.desc.slice(0, 160)) + (p.desc.length > 160 ? "..." : "") + "\u201d" : ", no description") + ".</p>";
+  if (IMG.site && p) h += '<img class="sa-auto-shot" src="' + IMG.site + '" alt="Screenshot of the website home page taken by the tool">';
+  h += '<div class="sa-actions"><button type="button" class="btn btn-ghost" id="saAuto"' + (AUTO_BUSY ? " disabled" : "") + ">" + (AUTO_BUSY ? "Testing..." : a || p ? "Run the tests again" : "Run the website tests") + '</button></div><p class="sa-ms" id="saAutoMsg" role="status"></p></div>';
+  return h;
+}
+function runAuto() {
+  var dom = domainOf(S.site.url); if (!dom || !window.SAX || AUTO_BUSY) return;
+  AUTO_BUSY = true; render(true); var m = function (t) { var el = $("saAutoMsg"); if (el) el.textContent = t; };
+  m("Testing " + dom + ". This can take up to a minute. You can keep answering below.");
+  var notes = [];
+  var p1 = SAX.psi("https://" + dom).then(function (r) { r.dom = dom; S.site.auto = r; if (r.perf != null) S.site.perf = String(r.perf); if (r.seo != null) S.site.seo = String(r.seo); }, function (e) { notes.push("PageSpeed did not run: " + SAX.say(e) + ". Use the PageSpeed Insights link above and type the scores."); });
+  var p2 = SAX.peek("https://" + dom).then(function (r) {
+    var shot = r.shotUrl; delete r.shotUrl; r.dom = dom; S.site.peek = r;
+    if (shot) return SAX.shrink(shot, 1000).then(function (d) { IMG.site = d; saveImgs(); }, function () { notes.push("The screenshot could not be saved. Take your own screenshot of the home page for your report."); });
+  }, function (e) { notes.push("The home page could not be read: " + SAX.say(e) + "."); });
+  Promise.all([p1, p2]).then(function () {
+    AUTO_BUSY = false; save(); if (S.step === 3) render(true);
+    m(notes.length ? notes.join(" ") : "Done. The results are above, and the PageSpeed scores are filled in.");
+  });
 }
 function vSite() {
   var s = S.site, e = [];
@@ -919,6 +953,7 @@ document.addEventListener("click", function (ev) {
   if (t.id === "saEdit2") { setSub(8, stPages().length - 1); go(8); return; }
   if (t.dataset.rm !== undefined) { S.objs.splice(+t.dataset.rm, 1); render(); return; }
   if (t.id === "saPdf") { makeIt(); return; }
+  if (t.id === "saAuto") { runAuto(); return; }
   if (t.id === "saGoRev") { go(4); return; }
   if (t.id === "saNew" || t.id === "saReset") { resetAsk(); return; }
 });

@@ -141,10 +141,13 @@ function build(S, IMG, fonts, logo, dims, opts) {
   fill(WHITE); doc.circle(W - M - 20, 45, 17, "F"); ring(W - M - 20, 45, 16, 12.5, A.overall, COL[tier], [232, 238, 242]);
   F("ax", 26, INK); tx(String(A.overall), W - M - 20, 48.5, { align: "center" }); F("fb", 6.5, MUT); tx("OUT OF 100", W - M - 20, 53.5, { align: "center" });
   y = 78;
-  F("fr", 8.5); var nl = split("The audit scores come from fixed rules applied to what the student observed. The target market, personas, objectives, strategy reasoning and evaluation plan were written by the student. The tool laid them out and calculated the Gantt chart and the budget." + (S.code ? " Submission code " + S.code + "." : "") + (gaps.length ? " The student skipped " + gaps.length + " answer" + (gaps.length === 1 ? "" : "s") + ". They are listed under Answers skipped." : ""), CW - 8), nh = 6 + nl.length * lh(8.5) + 3;
+  F("fr", 8.5); var nl = split("The audit scores come from fixed rules applied to what the student observed. The target market, personas, objectives, strategy reasoning and evaluation plan were written by the student. The tool laid them out and calculated the Gantt chart and the budget." + (S.code ? " Submission code " + S.code + "." : "") + (gaps.length ? " The student skipped " + gaps.length + " answer" + (gaps.length === 1 ? "" : "s") + ". They are listed under Answers skipped." : ""), S.code && window.SAX ? CW - 38 : CW - 8), nh = 6 + nl.length * lh(8.5) + 3;
+  var QR = S.code && window.SAX ? SAX.qr(SAX.verifyUrl(S.code)) : null; if (QR) nh = Math.max(nh, 34);
   fill(tint([201, 138, 27], 0.82)); doc.roundedRect(M, y - 5, CW, nh, 3, 3, "F");
   F("fb", 8.5, [90, 62, 4]); tx("STUDENT-AUTHORED PLAN, STRUCTURED AND COSTED BY THE TOOL", M + 4, y);
-  F("fr", 8.5, [90, 62, 4]); tx(nl.join("\n"), M + 4, y + 4); y += Math.max(20, nh + 2);
+  F("fr", 8.5, [90, 62, 4]); tx(nl.join("\n"), M + 4, y + 4);
+  if (QR) { var qs = 24, qx = M + CW - qs - 5, qy = y - 2, cell = qs / QR.length; fill(WHITE); doc.rect(qx - 1.5, qy - 1.5, qs + 3, qs + 3, "F"); fill([15, 43, 69]); QR.forEach(function (row, r) { row.forEach(function (on, c) { if (on) doc.rect(qx + c * cell, qy + r * cell, cell + 0.02, cell + 0.02, "F"); }); }); F("fb", 6.3, [90, 62, 4]); tx("Lecturer: scan to check", qx + qs / 2, qy + qs + 4, { align: "center" }); }
+  y += Math.max(20, nh + 2);
 
   head("Digital visibility score", "Weights: social media 30, Google profile 20, website 25, reviews 25. A part that does not apply is left out and the rest are re-weighted. Anything missing counts as zero.");
   var areas = [["Social media", A.social.score, 30], ["Google Business Profile", A.gbp.score, 20], ["Website", A.site.score, 25], ["Reviews and reputation", A.rep.score, 25]];
@@ -183,6 +186,9 @@ function build(S, IMG, fonts, logo, dims, opts) {
     para("Because there is no website, the plan below recommends building a new one.", { col: ACC, bold: true });
   } else {
     para("Address: " + (S.site.url || "-") + ".  Overall website score " + A.site.score + "/100." + (SA.num(S.site.perf) != null ? "  PageSpeed mobile performance " + S.site.perf + "." : "") + (SA.num(S.site.seo) != null ? "  PageSpeed SEO " + S.site.seo + "." : ""), { bold: true });
+    var dm = (function () { try { return new URL(/^https?:/i.test(S.site.url) ? S.site.url : "https://" + S.site.url).hostname; } catch (e) { return ""; } })(), au = S.site.auto && S.site.auto.dom === dm ? S.site.auto : null, pk = S.site.peek && S.site.peek.dom === dm ? S.site.peek : null;
+    if (au && String(au.perf) === String(S.site.perf)) para("PageSpeed scores measured by the tool with the Google PageSpeed Insights API (mobile) on " + au.at + "." + (au.lcp ? " Main content appeared after " + au.lcp + " seconds." : ""), { size: 8.5, col: MUT });
+    if (pk) para("Home page read by the tool on " + pk.at + ": title \u201c" + (pk.title || "none") + "\u201d" + (pk.desc ? "; description \u201c" + pk.desc.slice(0, 200) + "\u201d" : "; no description") + ".", { size: 8.5, col: MUT });
     table([{ w: 94, h: "Area" }, { w: 22, h: "Weight", al: "r" }, { w: 22, h: "Score", al: "r" }, { w: 36, h: "Rating" }], A.site.groups.map(function (g) { return [{ t: g.name, b: true }, g.w + "%", g.score == null ? "-" : String(g.score), g.score == null ? "Not counted" : g.score >= 75 ? "Good" : g.score >= 50 ? "Needs work" : "Weak"]; }), { zebra: true });
     h3("Checks that failed or only partly passed");
     var fails = [];
@@ -422,7 +428,7 @@ function build(S, IMG, fonts, logo, dims, opts) {
     add(pl.name + ": the newest posts with likes, comments and dates visible", "2. Situational analysis"); });
   if (!A.gbp.na) add(A.gbp.missing ? "Google Maps: a search showing the business has no Google profile" : "Google Business Profile: the full listing (hours, contact, photos, reviews)", "2. Situational analysis");
   if (A.site.none) add("Google: a search for the business name showing it has no website", "2. Situational analysis");
-  else { add("Website: the homepage on desktop and on mobile", "2. Situational analysis"); if (SA.num(S.site.perf) != null || SA.num(S.site.seo) != null) add("PageSpeed Insights results for mobile", "2. Situational analysis"); add("Website: the pages behind any failed checks", "2. Situational analysis"); }
+  else { add("Website: the homepage on desktop and on mobile" + (IMG.site ? " (the tool's screenshot is in Appendix A)" : ""), "2. Situational analysis"); if (SA.num(S.site.perf) != null || SA.num(S.site.seo) != null) add("PageSpeed Insights results for mobile", "2. Situational analysis"); add("Website: the pages behind any failed checks", "2. Situational analysis"); }
   A.rep.plats.forEach(function (rp) { if (rp.status === "listed") add(rp.name + ": review page and recent comments", "2. Situational analysis", !!IMG[rp.id]); else if (rp.missing) add(rp.name + ": a search showing the business is not listed", "2. Situational analysis"); });
   if (PO.comp) add("Your main competitor (" + PO.comp + "): its profile or website, used for the positioning map", "3. Target market (positioning)");
   TM.segs.forEach(function (g) { if (g.target === "yes" && g.fact) add("The source of your fact for " + g.name + ": \"" + g.fact + "\"", "3. Target market"); });
@@ -448,6 +454,12 @@ function build(S, IMG, fonts, logo, dims, opts) {
   doc.addPage(); y = TOP;
   head("Appendix A: evidence", "What the student saw and entered, with the date checked (" + S.biz.checked + "). Screenshots were shrunk in the browser. Reviewer names were not copied.");
   var anyEv = false;
+  if (IMG.site && dims.site && !A.site.none) {
+    anyEv = true; var sd = dims.site, sw = 90, shh = sw * sd.h / sd.w; if (shh > 110) { shh = 110; sw = shh * sd.w / sd.h; }
+    room(shh + 14); h3("Website home page" + (S.site.peek && S.site.peek.at ? ", captured by the tool on " + S.site.peek.at : ""));
+    try { doc.addImage(IMG.site, "JPEG", M, y, sw, shh, undefined, "FAST"); stroke(LINE); doc.rect(M, y, sw, shh); } catch (e) { F("fr", 8, MUT); tx("Screenshot could not be placed.", M, y + 4); }
+    y += shh + 6;
+  }
   A.rep.plats.forEach(function (p) {
     var a = (S.rep || {})[p.id] || {}; if (a.status !== "listed") return; anyEv = true;
     var sh = IMG[p.id], d = dims[p.id], iw = 90, ih = sh && d ? iw * d.h / d.w : 0; if (ih > 70) { ih = 70; iw = ih * d.w / d.h; }
