@@ -8,7 +8,7 @@ var STEPS = ["About the business", "Social media", "Google Business Profile", "W
 function blank() {
   var d = new Date(), m = new Date(d.getFullYear(), d.getMonth() + 1, 1);
   return { step: 0, biz: { name: "", student: "", sid: "", type: "", onLocation: "", checked: SA.ymd(d), start: m.getFullYear() + "-" + ("0" + (m.getMonth() + 1)).slice(-2), cap: "" },
-    social: {}, gbp: { status: "", checks: {} }, site: { has: "", checks: {}, subs: {} }, rep: {}, plan: null, objs: null };
+    social: {}, gbp: { status: "", checks: {} }, site: { has: "", checks: {}, subs: {} }, rep: {}, plan: null, objs: null, v: SA.PLAN_V };
 }
 var ME = (function () { try { return JSON.parse(localStorage.getItem("ia-student") || sessionStorage.getItem("ia-student") || "null") || {}; } catch (e) { return {}; } })();
 DRAFT = DRAFT_OLD + ":" + (ME.sid || "anon");
@@ -37,7 +37,7 @@ function saveImgs() { idbSet(imgKey(), IMG); cloudImgs(); }
 var LOADED = false;
 function save() { if (!LOADED) return; S.savedAt = Date.now(); try { localStorage.setItem(DRAFT, JSON.stringify(S)); } catch (e) {} cloudSave(); }
 function load() { try { var r = localStorage.getItem(DRAFT);
-  if (!r) { var old = localStorage.getItem(DRAFT_OLD), oo = old ? JSON.parse(old) : null; if (oo && oo.biz && oo.biz.sid && oo.biz.sid === ME.sid) { r = old; localStorage.setItem(DRAFT, old); localStorage.removeItem(DRAFT_OLD); } } if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; return true; } } } catch (e) {} return false; }
+  if (!r) { var old = localStorage.getItem(DRAFT_OLD), oo = old ? JSON.parse(old) : null; if (oo && oo.biz && oo.biz.sid && oo.biz.sid === ME.sid) { r = old; localStorage.setItem(DRAFT, old); localStorage.removeItem(DRAFT_OLD); } } if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; SA.migrate(S); return true; } } } catch (e) {} return false; }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 function getp(path) { var o = S, k = path.split("."); for (var i = 0; i < k.length; i++) { if (o == null) return undefined; o = o[k[i]]; } return o; }
 function setp(path, v) { var o = S, k = path.split("."); for (var i = 0; i < k.length - 1; i++) { if (o[k[i]] == null || typeof o[k[i]] !== "object") o[k[i]] = {}; o = o[k[i]]; } o[k[k.length - 1]] = v; }
@@ -443,94 +443,149 @@ function vTm() {
   return e.filter(function (x, i, a) { return a.indexOf(x) === i; });
 }
 
-/* ---------- step 8: objectives ---------- */
-function newObj() { return { id: uid("o"), text: "", kpi: "", unit: "%", base: "", target: "", deadline: 12, tool: "", freq: "Monthly", q: ["", "", ""], trig: 10, act: "" }; }
+/* ---------- step 8: objectives (SMART builder) ---------- */
+function newObj() { return { id: uid("o"), text: "", textEdited: false, verb: "", kpi: "", unit: "", chan: "", seg: "", base: "", baseSrc: "", target: "", deadline: "12", how: {}, why: {}, gap: "", tool: "", freq: "Monthly", q: ["", "", ""], trig: 10, act: "" }; }
 function ensureObjs() {
   if (!S.objs || !Array.isArray(S.objs)) S.objs = [];
   while (S.objs.length < 3) S.objs.push(newObj());
+  S.objs.forEach(function (o) { if (!o.how) o.how = {}; if (!o.why) o.why = {}; if (!o.textEdited) o.text = SA.objSentence(o, S); });
 }
 function modelStuff() {
-  if (!S.model) { var A = SA.audit(S), mo = SA.makeObjectives(A, S), mp = SA.makeStrategies(A, S, mo); S.model = { objs: mo, plan: JSON.parse(JSON.stringify(mp)) }; }
+  if (!S.model) { var A = SA.audit(S), mo = SA.makeObjectives(A, S); S.model = { objs: mo }; }
   return S.model;
 }
-function specific(o) { var w = String(o.text || "").toLowerCase().match(/[a-z]+/g) || [], uniq = {}; w.forEach(function (x) { uniq[x] = 1; }); return w.length >= 8 && Object.keys(uniq).length >= 6 && /\d/.test(o.text || ""); }
-function smart(o) {
-  var b = SA.num(o.base), t = SA.num(o.target), ok = function (x) { return x ? "ok" : "no"; };
-  var chg = b != null && t != null && b !== 0 ? Math.round((t - b) / Math.abs(b) * 100) : null, from0 = b === 0 && t != null;
-  var m = String(o.kpi || "").trim() && b != null && t != null;
-  var h = '<span class="sa-sm ' + ok(specific(o)) + '">Specific</span><span class="sa-sm ' + ok(m) + '">Measurable</span><span class="sa-sm ' + ok(b != null && t != null && t !== b) + '">Achievable</span><span class="sa-sm ok">Time-bound: month ' + (+o.deadline || 12) + "</span>";
-  var notes = [];
-  if (!specific(o) && String(o.text || "").trim()) notes.push("To be specific, the sentence needs the channel, the numbers and the time, for example \"from 200 to 2,000 by month 12\".");
-  if (from0) notes.push("Starting from 0, so the change is " + (t > 0 ? "+" : "") + t.toLocaleString("en-US") + (o.unit === "%" ? " points" : "") + ". Explain in your report how the strategies will get there.");
-  else if (chg == null) notes.push("Enter a baseline and a target to see the change.");
-  else {
-    notes.push("Change from baseline to target: " + (chg > 0 ? "+" : "") + chg.toLocaleString("en-US") + "%.");
-    if (chg > 300) notes.push("A big jump. That can be realistic from a small starting point, for example with paid ads, so explain in your report how the strategies will get there.");
-    if (chg < 0) notes.push("The target is lower than the baseline. That is fine when less is better, for example response time or cost per booking.");
-  }
-  return h + '<p class="sa-ms">' + notes.join(" ") + "</p>";
+function recs() { return SA.makeStrategies(SA.audit(S), S, S.objs || []); }
+function tName(t) { return { aware: "Awareness", engage: "Engagement", sales: "Sales", loyal: "Loyalty" }[t] || ""; }
+var STCOL = { aware: "#245582", consider: "#2a82bb", convert: "#1e7850", loyal: "#1f7f7f" };
+var LOYAL_TXT = "Loyalty is the fourth, optional kind. It is about the customers the business already has: getting them to come back, buy again and recommend it to friends. You measure it with repeat customers, referrals and reviews. Choose it when the business already has customers but few return, or it has few reviews.";
+/* The funnel: a drawn funnel on the left, and for each stage the objectives and strategies that sit there. where = "obj" (objectives page) or "plan" (strategies page). */
+function funnelViz(where) {
+  var on = S.plan && S.plan.strats ? S.plan.strats.filter(function (s) { return s.on; }) : [], objs = S.objs || [], W = [100, 82, 64, 46, 30], empty = 0;
+  var rows = SA.FUNNEL.map(function (f, k) {
+    var st = on.filter(function (s) { return stagesOf(s).indexOf(f[0]) >= 0; }), ob = [];
+    objs.forEach(function (o, i) { if (SA.TYPE_STAGE[o.type] === f[0]) ob.push(i); });
+    var opt = f[0] === "loyal", n = where === "obj" ? ob.length : st.length, gap = !n && !opt;
+    if (gap) empty++;
+    var h = '<li class="sa-fz-row' + (gap ? " gap" : "") + '" style="--c:' + STCOL[f[0]] + '"><div class="sa-fz-band" style="--t:' + W[k] + "%;--b:" + W[k + 1] + '%" aria-hidden="true"><span>' + n + "</span></div><div class=\"sa-fz-txt\">" +
+      "<p><b>" + (k + 1) + ". " + f[1] + (opt ? " (optional)" : "") + "</b> " + esc(f[2]) + ".</p>";
+    h += '<p class="sa-fz-line"><span>Objectives:</span> ' + (ob.length ? ob.map(function (i) { return '<button type="button" class="sa-fz-tag" data-gostep="7" data-objpage="' + i + '">Objective ' + (i + 1) + "</button>"; }).join("") : '<em>' + (opt ? "None. That is fine." : "None yet") + "</em>") + "</p>";
+    if (where === "plan") {
+      h += '<p class="sa-fz-line"><span>Strategies:</span> ' + (st.length ? st.map(function (s) { return '<i class="sa-fz-s">' + esc(s.name.split(" (")[0]) + "</i>"; }).join("") : "<em>None yet</em>") + "</p>";
+      if (!st.length) {
+        var sug = S.plan.strats.map(function (s, i) { return { s: s, i: i }; }).filter(function (x) { return !x.s.on && ((SA.SBY[x.s.id] || {}).stages || []).indexOf(f[0]) >= 0; }).sort(function (a, b) { return (b.s.rec ? 1 : 0) - (a.s.rec ? 1 : 0); }).slice(0, 2);
+        if (sug.length) h += '<p class="sa-fz-line sa-fz-fix"><span>Quick fix:</span> ' + sug.map(function (x) { return '<button type="button" class="sa-chip sm" data-tg="plan.strats.' + x.i + '.on">+ ' + esc(x.s.name.split(" (")[0]) + "</button>"; }).join("") + "</p>";
+      }
+    } else if (opt) h += '<p class="sa-ms">' + esc(LOYAL_TXT) + "</p>";
+    return h + "</div></li>";
+  }).join("");
+  var head = where === "obj" ? "Your objectives across the funnel" : "Your plan across the funnel";
+  var sub = where === "obj" ? "A sound plan moves people through the funnel. We strongly encourage one objective each at Awareness, Engagement and Sales. The number in the funnel is how many objectives sit at that stage."
+    : "Each stage needs at least one strategy, so customers do not stop halfway. The number in the funnel is how many strategies work at that stage.";
+  var sum = empty ? '<p class="sa-fz-sum no">' + empty + " of the first three stages " + (empty === 1 ? "has" : "have") + " nothing yet.</p>" : '<p class="sa-fz-sum ok">Every main stage is covered.</p>';
+  return '<div class="sa-card sa-fz"><h3>' + head + '</h3><p class="sa-sub">' + sub + "</p>" + sum + '<ol class="sa-fz-list">' + rows + "</ol></div>";
 }
 function objGuide() {
-  return '<details class="sa-hints"><summary>How to write a SMART objective</summary>' +
-    '<p class="sa-ms"><b>Use this pattern:</b> <i>Increase / Grow / Reduce</i> + <i>what you measure</i> + <i>on which channel</i> + <i>from the baseline to the target</i> + <i>by when</i> + <i>through which strategy</i>.</p>' +
-    '<ul class="sa-hl"><li><b>Specific:</b> one result, one channel, one segment if you can. Not "grow online presence".</li>' +
-    '<li><b>Measurable:</b> a number you can check, with a baseline from your audit or the business\'s own records.</li>' +
-    '<li><b>Achievable:</b> possible with the budget and strategies you plan. Big jumps are fine from a small start, but say how.</li>' +
-    '<li><b>Relevant:</b> it fixes a gap your audit found and helps the business sell more.</li>' +
-    '<li><b>Time-bound:</b> a month in the 12-month plan.</li></ul>' +
-    '<p class="sa-ms"><b>Weak:</b> "Grow Instagram followers."<br><b>Strong:</b> "Grow Instagram followers from 200 to 2,000 by month 12 through weekly Reels and a monthly paid ad aimed at local families."</p>' +
-    '<p class="sa-ms"><b>Tip:</b> mix objective types. One for awareness (followers, reach), one for engagement (engagement rate, messages) and one for sales (bookings, orders, website enquiries).</p></details>';
+  return '<details class="sa-hints"><summary>What makes an objective SMART?</summary><ul class="sa-hl">' +
+    ["S", "M", "A", "R", "T"].map(function (k) { return "<li><b>" + k + " = " + SA.SMART_HELP[k][0] + ":</b> " + esc(SA.SMART_HELP[k][1]) + "</li>"; }).join("") + "</ul>" +
+    '<p class="sa-ms"><b>Weak:</b> "Grow Instagram followers."<br><b>Strong:</b> "Increase Instagram followers among weekend families from 1,200 to 2,000 by month 12 through weekly Reels and paid social ads aimed at the segment."</p>' +
+    '<p class="sa-ms">You build it part by part below. The tool writes the sentence for you, and you can edit it.</p></details>';
+}
+var LEVEL_TXT = { ok: "Realistic", high: "Ambitious", veryhigh: "Very ambitious", low: "Very small", na: "Not checked yet" };
+function realBox(o, i) {
+  var rz = SA.realism(o);
+  return '<div class="sa-real lv-' + rz.level + '"><b>Realistic check: ' + LEVEL_TXT[rz.level] + ".</b> " + esc(rz.msg) + (rz.suggest != null && rz.level !== "ok" && rz.level !== "na" ? ' <button type="button" class="sa-chip sm" data-settarget="' + i + '" data-v="' + rz.suggest + '">Use a realistic target: ' + esc(SA.fmtNum(rz.suggest, o.unit)) + "</button>" : "") + "</div>";
+}
+/* the parts that change as the student types: sentence preview, realistic check, SMART tiles, help chips */
+function objLive(o, i) {
+  var P = SA.smartParts(o, S), rz = SA.realism(o), c = "objs." + i, h = "";
+  h += '<div class="sa-tiles">' + ["S", "M", "A", "R", "T"].map(function (k) { var p = P[k]; return '<div class="sa-tile ' + (p.ok ? "ok" : "no") + '"><b>' + k + '</b><small>' + SA.SMART_HELP[k][0] + "</small><span>" + esc(p.ok ? p.text : (p.miss || "Not complete yet")) + "</span></div>"; }).join("") + "</div>";
+  var help = [];
+  if (!o.chan) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.chan">Add the channel</button>']);
+  if (!o.seg) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.seg">Add who it is for (target segment)</button>']);
+  if (!o.baseSrc) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.baseSrc">Say where the baseline comes from</button>']);
+  if (!SA.chosen(o.how).length) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.how">Add what will drive it</button>']);
+  if (rz.level !== "ok" && !SA.chosen(o.why).length) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.why">Add why it is realistic</button>']);
+  if (!o.gap) help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.gap">Link it to an audit gap</button>']);
+  if (+o.deadline === 12 && rz.level === "ok") help.push(['<button type="button" class="sa-chip sm sa-help" data-go="' + c + '.deadline">Could it be done sooner?</button>']);
+  if (help.length) h += '<div class="sa-strong"><b>Make it stronger:</b> ' + help.join("") + "</div>";
+  return h;
 }
 function objCard(o, i) {
-  var cap = "objs." + i;
-  return '<div class="sa-obj"><div class="f"><label for="ot' + i + '">Write the objective</label><textarea id="ot' + i + '" data-p="' + cap + '.text" data-sm="' + i + '" placeholder="for example: Increase Instagram engagement from 1.2% to 3% by month 9 by posting Reels three times a week">' + esc(o.text) + "</textarea>" +
-    '<span class="sa-hint">What will change, on which channel, by how much and by when. The boxes below hold the numbers.</span></div>' +
-    chips(cap + ".type", 'What kind of objective? <span class="sa-pick">Pick one</span>', SA.OBJ_TYPES, { sm: true, re: true }) +
-    (o.type ? chips(cap + ".kpi", 'Pick a KPI <span class="sa-pick">Pick one, or write your own below</span>', SA.KPIS[o.type].map(function (k) { return [k[0], k[0]]; }), { sm: true }) : "") +
-    '<div class="sa-grid4"><div><label for="ok' + i + '">KPI (what you will measure)</label><input id="ok' + i + '" data-p="' + cap + '.kpi" data-sm="' + i + '" placeholder="for example: engagement rate" value="' + esc(o.kpi) + '"></div>' +
-    '<div><label for="ou' + i + '">Unit</label><select id="ou' + i + '" data-p="' + cap + '.unit">' + [["%", "%"], ["", "number"], [" MVR", "MVR"], [" points", "score"]].map(function (u) { return '<option value="' + u[0] + '"' + ((o.unit || "") === u[0] ? " selected" : "") + ">" + u[1] + "</option>"; }).join("") + "</select></div>" +
-    '<div><label for="ob' + i + '">Baseline now</label><input id="ob' + i + '" data-p="' + cap + '.base" data-sm="' + i + '" inputmode="decimal" value="' + esc(o.base) + '"></div>' +
-    '<div><label for="oT' + i + '">Target</label><input id="oT' + i + '" data-p="' + cap + '.target" data-sm="' + i + '" inputmode="decimal" value="' + esc(o.target) + '"></div></div>' +
-    chips(cap + ".deadline", 'Done by month <span class="sa-pick">Pick one</span>', [3, 6, 9, 12].map(function (m) { return [String(m), "Month " + m]; }), { sm: true }) +
-    '<div class="sa-smart" data-smo="' + i + '">' + smart(o) + "</div>" +
-    (S.objs.length > 3 ? '<div style="margin-top:8px"><button type="button" class="sa-btn-s" data-rm="' + i + '">Remove this objective</button></div>' : "") + "</div>";
+  var c = "objs." + i, A = SA.audit(S), tg = (S.tm && S.tm.segs || []).filter(function (g) { return g.target === "yes"; }), L = (function () { var x = linQ(o); return x; })();
+  var stage = SA.FBY[SA.TYPE_STAGE[o.type]];
+  var h = '<div class="sa-obj">';
+  h += '<div class="sa-card"><h3>1. Kind of objective</h3>' + chips(c + ".type", 'Which funnel stage does it move? <span class="sa-pick">Pick one</span>', SA.OBJ_TYPES, { sm: true, re: true }) + (stage ? '<p class="sa-tip">Funnel stage: <b>' + stage[1] + "</b>. " + esc(stage[2]) + ".</p>" : "") + '<details class="sa-hints"' + (o.type === "loyal" ? " open" : "") + '><summary>What is a Loyalty objective?</summary><p class="sa-ms">' + esc(LOYAL_TXT) + '</p><p class="sa-ms"><b>Example:</b> "Increase repeat bookings from returning guests from 10 to 25 a month by month 12 through a thank-you WhatsApp message with a repeat offer and a monthly email newsletter."</p></details></div>';
+  h += '<div class="sa-card"><h3>2. Specific: what changes, where, for whom</h3>' +
+    chips(c + ".verb", 'Action <span class="sa-pick">Pick one</span>', SA.VERBS.map(function (v) { return [v, v]; }), { sm: true, re: true }) +
+    (o.type ? chips(c + ".kpi", 'KPI <span class="sa-pick">Pick one, or type your own below</span>', SA.KPIS[o.type].map(function (k) { return [k[0], k[0]]; }), { sm: true }) : '<p class="sa-tip">Pick the kind of objective first to see KPI ideas.</p>') +
+    '<div class="sa-grid4"><div><label for="ok' + i + '">KPI (what you will measure)</label><input id="ok' + i + '" data-p="' + c + '.kpi" data-sm="' + i + '" placeholder="for example: engagement rate" value="' + esc(o.kpi) + '"></div>' +
+    '<div><label for="ou' + i + '">Unit</label><select id="ou' + i + '" data-p="' + c + '.unit" data-re="1">' + [["", "number"], ["%", "%"], [" MVR", "MVR"], [" points", "rating"]].map(function (u) { return '<option value="' + u[0] + '"' + ((o.unit || "") === u[0] ? " selected" : "") + ">" + u[1] + "</option>"; }).join("") + "</select></div></div>" +
+    chips(c + ".chan", 'Channel <span class="sa-pick">Pick one</span>', SA.OBJ_CHANS.map(function (x) { return [x, x.charAt(0).toUpperCase() + x.slice(1)]; }), { sm: true, re: true }) +
+    (tg.length ? chips(c + ".seg", 'For which target segment? <span class="sa-pick">Pick one</span>', tg.map(function (g) { return [g.id, esc(g.name || "Segment")]; }), { sm: true, re: true }) : '<p class="sa-tip">Choose your target segments in step 7 first.</p>') + "</div>";
+  h += '<div class="sa-card"><h3>3. Measurable: the numbers</h3>' + hintsHtml() +
+    '<div class="sa-grid4"><div><label for="ob' + i + '">Baseline now</label><input id="ob' + i + '" data-p="' + c + '.base" data-sm="' + i + '" inputmode="decimal" value="' + esc(o.base) + '"></div>' +
+    '<div><label for="oT' + i + '">Target</label><input id="oT' + i + '" data-p="' + c + '.target" data-sm="' + i + '" inputmode="decimal" value="' + esc(o.target) + '"></div></div>' +
+    chips(c + ".baseSrc", 'Where does the baseline come from? <span class="sa-pick">Pick one</span>', SA.BASE_SRC, { sm: true, re: true }) + "</div>";
+  h += '<div class="sa-card"><h3>4. Achievable: is it realistic in 12 months?</h3><div data-smr="' + i + '">' + realBox(o, i) + "</div>" +
+    cgroup(c + ".how", "What will drive it?", SA.HOW, true, "These become the \"through...\" part of your sentence. Your strategies in step 9 should do these things.") +
+    cgroup(c + ".why", "Why it can work", SA.REAL, true, "Pick at least one, especially if the check says the target is ambitious.") + "</div>";
+  h += '<div class="sa-card"><h3>5. Relevant: why this objective matters</h3>' + chips(c + ".gap", 'Which audit gap does it fix? <span class="sa-pick">Pick one</span>', SA.gapList(A).map(function (g) { return [g, esc(g)]; }), { sm: true, re: true }) + "</div>";
+  h += '<div class="sa-card"><h3>6. Time-bound: by when</h3>' + chips(c + ".deadline", 'Done by month <span class="sa-pick">Pick one</span>', [3, 6, 9, 12].map(function (m) { return [String(m), "Month " + m]; }), { sm: true, re: true }) +
+    (L[0] !== "" ? '<p class="sa-tip">Quarterly milestones (you can change them in step 10): ' + L.map(function (v, k) { return "Q" + (k + 1) + " " + esc(SA.fmtNum(v, o.unit)); }).join(", ") + ", Q4 " + esc(SA.fmtNum(o.target, o.unit)) + ".</p>" : "") + "</div>";
+  h += '<div class="sa-card sa-objout"><h3>Your objective</h3><div class="f wide"><label for="ot' + i + '">The tool writes it from your choices. You can edit it.</label><textarea id="ot' + i + '" data-p="' + c + '.text" data-edit="' + i + '" rows="3">' + esc(o.text) + "</textarea>" +
+    (o.textEdited ? '<span class="sa-hint" id="oh' + i + '">You edited this sentence. <button type="button" class="sa-btn-s" data-rebuild="' + i + '">Rebuild it from my choices</button></span>' : '<span class="sa-hint" id="oh' + i + '">It updates as you choose. Edit it to make it your own.</span>') + "</div>" +
+    '<div data-smo="' + i + '">' + objLive(o, i) + "</div></div>";
+  h += (S.objs.length > 3 ? '<div style="margin-top:8px"><button type="button" class="sa-btn-s" data-rm="' + i + '">Remove this objective</button></div>' : "") + "</div>";
+  return h;
 }
 function hintsHtml() {
   var M = modelStuff(), seen = {}, rows = [];
   M.objs.forEach(function (o) { var b = SA.num(o.base); if (b == null || seen[o.kpi]) return; seen[o.kpi] = 1; rows.push("<li>" + esc(o.kpi) + ": <b>" + esc(o.base) + (o.unit === "%" ? "%" : "") + "</b></li>"); });
   rows.push("<li>Overall digital visibility score: <b>" + SA.audit(S).overall + "/100</b></li>");
-  return '<details class="sa-hints"><summary>Baselines your audit measured</summary><p class="sa-ms">Use these as starting points, or the business\'s own figures if you have them. Say where each baseline came from.</p><ul class="sa-hl">' + rows.join("") + "</ul></details>";
+  return '<details class="sa-hints"><summary>Baselines your audit measured</summary><p class="sa-ms">Use these as starting points, or the business\'s own figures if you have them.</p><ul class="sa-hl">' + rows.join("") + "</ul></details>";
 }
 function viewObj() {
   ensureObjs(); var i = curIdx(7), o = S.objs[i];
   var h = '<h1 class="sa-h">Objective ' + (i + 1) + " of " + S.objs.length + "</h1>";
-  if (i === 0) h += '<p class="sa-lede">The assignment needs at least three SMART objectives. Write them yourself, one per page. The tool checks the numbers and shows what is missing.</p>';
-  return h + objGuide() + hintsHtml() + '<div id="saObjs">' + objCard(o, i) + "</div>";
+  if (i === 0) h += '<p class="sa-lede">The assignment needs at least three SMART objectives. Build each one part by part. The tool writes the sentence, checks if the target is realistic, and shows which SMART parts are still missing.</p>';
+  return h + funnelViz("obj") + objGuide() + '<div id="saObjs">' + objCard(o, i) + "</div>";
 }
 function vObj() {
   ensureObjs(); var e = [];
   S.objs.forEach(function (o, i) {
-    var n = "Objective " + (i + 1);
-    if (words(o.text) < 8) e.push(n + ": write it out in at least 8 words.@@objs." + i + ".text");
-    else if (!specific(o)) e.push("~" + n + ": make it specific: include the numbers and the time in the sentence.@@objs." + i + ".text");
-    if (!o.type) e.push("~" + n + ": pick what kind of objective it is.@@objs." + i + ".type");
-    if (!String(o.kpi).trim()) e.push(n + ": name the KPI.@@objs." + i + ".kpi");
+    var n = "Objective " + (i + 1), P = "@@objs." + i + ".";
+    if (!o.type) e.push("~" + n + ": pick the kind of objective (funnel stage)." + P + "type");
+    if (!String(o.kpi || "").trim()) e.push(n + ": name the KPI." + P + "kpi");
     var b = SA.num(o.base), t = SA.num(o.target);
-    if (b == null) e.push(n + ": enter a baseline number.@@objs." + i + ".base"); if (t == null) e.push(n + ": enter a target number.@@objs." + i + ".target");
-    if (b != null && t != null && t === b) e.push(n + ": the target is the same as the baseline.@@objs." + i + ".target");
+    if (b == null) e.push(n + ": enter a baseline number." + P + "base"); if (t == null) e.push(n + ": enter a target number." + P + "target");
+    if (b != null && t != null && t === b) e.push(n + ": the target is the same as the baseline." + P + "target");
+    if (!o.chan) e.push("~" + n + ": pick the channel (Specific)." + P + "chan");
+    if (!o.seg) e.push("~" + n + ": pick the target segment (Specific)." + P + "seg");
+    if (!o.baseSrc) e.push("~" + n + ": say where the baseline comes from (Measurable)." + P + "baseSrc");
+    if (!SA.chosen(o.how).length) e.push("~" + n + ": pick what will drive it (Achievable)." + P + "how");
+    var rz = SA.realism(o); if (rz.level !== "ok" && rz.level !== "na" && !SA.chosen(o.why).length) e.push("~" + n + ": the target is " + LEVEL_TXT[rz.level].toLowerCase() + ". Pick why it can work, or change the target (Achievable)." + P + "why");
+    if (!o.gap) e.push("~" + n + ": pick the audit gap it fixes (Relevant)." + P + "gap");
+    if (o.textEdited && words(o.text) < 8) e.push("~" + n + ": the sentence is very short. Rebuild it or write it out." + P + "text");
   });
   return e;
 }
 
-/* ---------- step 9: strategies, Gantt, budget ---------- */
+/* ---------- step 9: strategies across the funnel, Gantt, budget ---------- */
 function refreshPlanRec() {
-  if (!S.plan || !S.plan.strats) return; var M = modelStuff();
-  S.plan.strats.forEach(function (s) { var m = M.plan.strats.filter(function (x) { return x.id === s.id; })[0]; if (m) { s.why = m.why; s.rec = !!m.on; } });
+  if (!S.plan || !S.plan.strats) return; var M = recs();
+  S.plan.strats.forEach(function (s) { var m = M.strats.filter(function (x) { return x.id === s.id; })[0]; if (m) { s.why = m.why; s.rec = !!m.on; } });
 }
 function ensurePlan() {
-  if (S.plan && S.plan.cfg) return;
-  var M = modelStuff();
-  S.plan = { strats: M.plan.strats.map(function (s) { return { id: s.id, name: s.name, theory: s.theory, why: s.why, rec: !!s.on, on: false, links: {}, segl: {}, fits: {}, note: "" }; }), cfg: {}, lines: [], cont: "10" };
+  if (!S.plan || !S.plan.cfg) S.plan = { strats: [], cfg: {}, lines: [], cont: "10" };
+  var have = {}; S.plan.strats.forEach(function (s) { have[s.id] = s; });
+  var M = recs();
+  S.plan.strats = SA.STRATS.map(function (sd) {
+    var s = have[sd.id] || { id: sd.id, on: false, links: {}, segl: {}, fits: {}, note: "" }, m = M.strats.filter(function (x) { return x.id === sd.id; })[0] || {};
+    s.name = sd.name; s.theory = sd.theory; s.why = m.why || ""; s.rec = !!m.on;
+    if (sd.core) s.on = true;
+    if (!s.stages) { s.stages = {}; sd.stages.forEach(function (x) { s.stages[x] = true; }); }
+    return s;
+  });
 }
 function deriveLines() {
   if (!S.plan || !S.plan.cfg) return;
@@ -538,7 +593,7 @@ function deriveLines() {
   S.plan.strats.forEach(function (s) { if (!s.on) return; SA.scLines(s.id, S.plan.cfg[s.id] || {}, SA.stratCtx(S, s.id)).forEach(function (l) { l.s = s.id; L.push(l); }); });
   S.plan.lines = L;
 }
-var GC = { web: "#245582", seo: "#2a82bb", content: "#2fa9a9", smads: "#3f9e74", banner: "#1C3F63", email: "#5FA8D3", infl: "#1F7F7F", viral: "#7cc9a6", affil: "#7A93A8" };
+var GC = { social: "#2fa9a9", web: "#245582", seo: "#2a82bb", blog: "#5FA8D3", newsletter: "#5b6fb5", video: "#3f9e74", direct: "#1e7850", banner: "#1C3F63", infl: "#1F7F7F", viral: "#7cc9a6", affil: "#7A93A8" };
 var BASIS_TXT = { "Price list": "Islandeative price list", "At cost": "Paid at cost", "Market 2026": "2026 market estimate", "Own time": "No cash cost" };
 function ganttHtml(only) {
   deriveLines();
@@ -561,31 +616,49 @@ function budgetHtml() {
   return { html: h, B: B };
 }
 function stPages() { ensurePlan(); var P = ["pick"]; S.plan.strats.forEach(function (s, i) { if (s.on) P.push("st:" + i); }); P.push("budget"); return P; }
+function stagesOf(s) { var st = SA.chosen(s.stages); return st.length ? st : (SA.SBY[s.id] || {}).stages || []; }
+function stageTags(s) { return '<span class="sa-stages">' + stagesOf(s).map(function (x) { return '<i class="st-' + x + '">' + SA.FBY[x][1] + "</i>"; }).join("") + "</span>"; }
+function funnelCard() { return funnelViz("plan"); }
+function pickCard(s, i, M, extra) {
+  var sd = SA.SBY[s.id], m = M.strats.filter(function (x) { return x.id === s.id; })[0] || {}, objs = (m.objs || []).map(function (k) { return "Objective " + (k + 1); });
+  return '<button type="button" class="sa-pickcard' + (sd.core ? " core" : "") + '" data-tg="plan.strats.' + i + '.on" aria-pressed="' + !!s.on + '"><span class="nm">' + esc(s.name) + (sd.core ? ' <small class="req">Required</small>' : "") + "</span>" + stageTags(s) + '<span class="ds">' + esc(SA.STRAT_DESC[s.id] || "") + "</span>" +
+    (objs.length ? '<span class="rc">Suggested for ' + SA.andJoin(objs) + "</span>" : s.rec && !sd.core ? '<span class="rc">Your audit points here: ' + esc(s.why) + "</span>" : "") + (extra || "") + "</button>";
+}
 function viewPick() {
-  var h = '<h1 class="sa-h">Choose your strategies</h1><p class="sa-lede">Pick at least two strategies from the course list. Next, you will plan each one on its own page: why it fits, what you will do and how often. The tool costs it and draws the timeline.</p>';
-  S.plan.strats.forEach(function (s, i) {
-    h += '<button type="button" class="sa-pickcard" data-tg="plan.strats.' + i + '.on" aria-pressed="' + !!s.on + '"><span class="nm">' + esc(s.name) + '</span><span class="ds">' + esc(SA.STRAT_DESC[s.id] || "") + "</span>" + (s.rec ? '<span class="rc">Your audit points here: ' + esc(s.why) + "</span>" : "") + "</button>";
-  });
+  var M = recs(), on = S.plan.strats.filter(function (s) { return s.on; }).length, sig = SA.directSignals(S), idx = function (id) { var k = -1; S.plan.strats.forEach(function (s, j) { if (s.id === id) k = j; }); return k; };
+  var h = '<h1 class="sa-h">Choose your strategies</h1><p class="sa-lede">Social media marketing (content and paid ads) is required. Add at least two more, so you have <b>at least ' + SA.MIN_STRATS + "</b>. Pick strategies that move your objectives and cover the funnel. You have <b>" + on + "</b> now.</p>";
+  h += funnelCard();
+  var si = idx("social"), di = idx("direct");
+  h += '<h3 class="sa-grp">Required</h3>' + pickCard(S.plan.strats[si], si, M);
+  var sugg = S.plan.strats.filter(function (s) { var m = M.strats.filter(function (x) { return x.id === s.id; })[0] || {}; return !SA.SBY[s.id].core && s.id !== "direct" && (m.objs || []).length; });
+  if (sugg.length) h += '<h3 class="sa-grp">Suggested for your objectives</h3>' + sugg.map(function (s) { return pickCard(s, idx(s.id), M); }).join("");
+  h += '<h3 class="sa-grp">Conversion: the direct route (recommended)</h3><p class="sa-tip">How the business talks to one customer at a time and turns their interest into a booking or sale. It is the Conversion stage of your funnel.</p>' +
+    pickCard(S.plan.strats[di], di, M, sig.length ? '<span class="rc">Your audit and plan point here: ' + esc(sig.slice(0, 2).join(" ")) + "</span>" : "");
+  var rest = S.plan.strats.filter(function (s) { return !SA.SBY[s.id].core && s.id !== "direct" && sugg.indexOf(s) < 0; });
+  h += '<h3 class="sa-grp">More strategies</h3>' + rest.map(function (s) { return pickCard(s, idx(s.id), M); }).join("");
   return h;
 }
 function flowHtml(id) { return '<ol class="sa-flow">' + SA.SCFG[id].flow.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ol>"; }
 function viewStrat(si) {
-  var s = S.plan.strats[si], b = "plan.strats." + si, cb = "plan.cfg." + s.id, v = S.plan.cfg[s.id] || (S.plan.cfg[s.id] = {}), lab = SA.monthLabels(S.biz.start), cx = SA.stratCtx(S, s.id);
+  var s = S.plan.strats[si], sd = SA.SBY[s.id], b = "plan.strats." + si, cb = "plan.cfg." + s.id, v = S.plan.cfg[s.id] || (S.plan.cfg[s.id] = {}), lab = SA.monthLabels(S.biz.start), cx = SA.stratCtx(S, s.id);
   var tg = S.tm.segs.filter(function (g) { return g.target === "yes"; });
-  var h = '<h1 class="sa-h">' + esc(s.name) + '</h1><p class="sa-lede">' + esc(SA.STRAT_DESC[s.id] || "") + (s.rec ? " <b>Your audit points here:</b> " + esc(s.why) : "") + "</p>";
+  var h = '<h1 class="sa-h">' + esc(s.name) + '</h1><p class="sa-lede">' + esc(SA.STRAT_DESC[s.id] || "") + (s.rec && !sd.core ? " <b>Your audit points here:</b> " + esc(s.why) : "") + "</p>";
+  h += '<p class="sa-tip"><b>Course topic:</b> ' + esc(sd.course) + ". <b>Theory to link it to in your report:</b> " + esc(s.theory) + ".</p>";
+  if (s.id === "direct") { var sig = SA.directSignals(S); if (sig.length) h += '<div class="sa-note"><b>Why a direct route fits this business:</b><ul class="sa-hl">' + sig.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></div>"; }
   h += '<div class="sa-card"><h3>How it works</h3><p class="sa-tip">This is how a business runs it, step by step. Explain each step in your report.</p>' + flowHtml(s.id) + "</div>";
-  h += '<div class="sa-card"><h3>Why it fits</h3>' +
-    '<fieldset class="sa-fs"><legend>Which objectives does it support? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + S.objs.map(function (o, i) { var t = String(o.text || "Objective " + (i + 1)); return mchip(b + ".links", o.id, (i + 1) + ". " + esc(t.length > 60 ? t.slice(0, 58) + "..." : t)); }).join("") + "</div></fieldset>" +
+  h += '<div class="sa-card"><h3>Where it fits</h3>' +
+    '<fieldset class="sa-fs"><legend>Funnel stages it works at <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + SA.FUNNEL.map(function (f) { return mchip(b + ".stages", f[0], f[1]); }).join("") + "</div></fieldset>" +
+    '<fieldset class="sa-fs"><legend>Which objectives does it support? <span class="sa-pick">Pick all that apply</span></legend><p class="sa-tip">Marked (suggested) when it moves that objective\'s KPI.</p><div class="sa-opts">' + S.objs.map(function (o, i) { var t = (o.kpi || "Objective " + (i + 1)) + (SA.kpiStrats(o).indexOf(s.id) >= 0 ? " (suggested)" : ""); return mchip(b + ".links", o.id, (i + 1) + ". " + esc(t)); }).join("") + "</div></fieldset>" +
     '<fieldset class="sa-fs"><legend>Which target segments does it reach? <span class="sa-pick">Pick all that apply</span></legend><div class="sa-opts">' + tg.map(function (g) { return mchip(b + ".segl", g.id, esc(g.name || "Segment")); }).join("") + "</div></fieldset>" +
     cgroup(b + ".fits", "Why does it fit?", SA.FITS, true) +
-    '<p class="sa-tip"><b>Theory to link it to in your report:</b> ' + esc(s.theory) + ".</p>" +
     '<div class="sa-grid">' + txt(b + ".note", "Anything to add in one line?", { wide: true, opt: true, ph: "for example: families plan trips on Instagram during school holidays" }) + "</div></div>";
   h += '<div class="sa-card"><h3>How you will run it</h3><div class="f sa-start"><label for="st_' + s.id + '">' + (s.id === "web" ? "Start building in" : "Start in") + '</label><select id="st_' + s.id + '" data-p="' + cb + '.st" data-re="1">' + lab.map(function (m) { return '<option value="' + m.i + '"' + ((+v.st || 1) === m.i ? " selected" : "") + ">" + m.label + "</option>"; }).join("") + "</select></div>";
-  if (s.id === "web" && cx.contentArticles) h += '<p class="sa-tip">Your content plan already writes blog articles, so articles are not costed again here.</p>';
-  if (s.id === "seo" && !cx.hasSite && !cx.webOn) h += '<p class="sa-tip">The business has no website and you have not chosen Blogs and Websites, so SEO here is about Google Maps, the Google profile and directories.</p>';
+  if (s.id === "web" && cx.contentArticles) h += '<p class="sa-tip">Articles are planned in Blog and Article Content, so they are not costed here.</p>';
+  if (s.id === "seo" && !cx.hasSite && !cx.webOn) h += '<p class="sa-tip">The business has no website and you have not chosen Website, so SEO here is about Google Maps, the Google profile and directories.</p>';
+  if (s.id === "blog" && !cx.hasSite && !cx.webOn) h += '<p class="sa-warn">The business has no website. Choose Website too, or the articles have nowhere to live.</p>';
   SA.scQs(s.id, cx).forEach(function (q) {
     if (q.multi) h += cgroup(cb + "." + q.k, q.q, [], true, q.tip).replace('<div class="sa-opts"></div>', '<div class="sa-opts">' + q.o.map(function (o) { return mchip(cb + "." + q.k, o[0], esc(o[1])); }).join("") + "</div>").replace("Pick all that apply", q.opt ? "Optional, pick any" : "Pick all that apply");
-    else h += chips(cb + "." + q.k, esc(q.q) + ' <span class="sa-pick">Pick one</span>', q.o.map(function (o) { return [o[0], esc(o[1])]; }), { sm: true, tip: q.tip });
+    else h += chips(cb + "." + q.k, esc(q.q) + ' <span class="sa-pick">Pick one</span>', q.o.map(function (o) { return [o[0], esc(o[1])]; }), { sm: true, tip: q.tip, re: true });
   });
   deriveLines(); var B = SA.budget(S.plan, S.biz), sub = (B.byS[s.id] || { total: 0 }).total;
   h += '<p class="sa-subtot">' + esc(s.name) + ": <b>MVR " + Math.round(sub).toLocaleString("en-US") + "</b> over 12 months. Whole plan so far: about MVR " + Math.round(B.total / 12).toLocaleString("en-US") + " a month.</p>";
@@ -627,7 +700,7 @@ function refreshBudget() {
 }
 function vPlan() {
   ensurePlan(); var e = [], on = S.plan.strats.filter(function (s) { return s.on; }), any = function (m) { return SA.chosen(m).length > 0; };
-  if (on.length < 2) e.push("Choose at least 2 strategies.@@plan.strats");
+  if (on.length < SA.MIN_STRATS) e.push("Choose at least " + SA.MIN_STRATS + " strategies: Social media plus at least two more.@@plan.strats");
   if (!S.plan.defend) e.push("~Say whether the budget is defensible.@@plan.defend");
   else if (S.plan.defend === "trim") e.push("~You chose to make the budget smaller. Change a strategy, then come back and pick Yes or Keep it.@@plan.defend");
   else if (!SA.chosen(S.plan.defwhy).length) e.push("~Pick how you will defend the budget.@@plan.defwhy");
@@ -640,6 +713,12 @@ function vPlan() {
       if (q.opt) return; var val = v[q.k], ok = q.multi ? q.o.some(function (o) { return (val || {})[o[0]]; }) : q.o.some(function (o) { return o[0] === String(val); });
       if (!ok) e.push("~" + s.name + ": answer \"" + q.q + "\"@@plan.cfg." + s.id + "." + q.k);
     });
+  });
+  /* every objective needs at least one strategy behind it */
+  (S.objs || []).forEach(function (o, k) {
+    if (on.some(function (s) { return (s.links || {})[o.id]; })) return;
+    var sug = SA.kpiStrats(o), tgt = -1; S.plan.strats.forEach(function (s, j) { if (tgt < 0 && s.on && sug.indexOf(s.id) >= 0) tgt = j; });
+    e.push("~Objective " + (k + 1) + " has no strategy linked to it. Open a strategy that moves it and tick the objective.@@" + (tgt >= 0 ? "plan.strats." + tgt + ".links" : "plan.strats"));
   });
   return e;
 }
@@ -739,7 +818,9 @@ function stepsSkip(i, dir) { return i; }
 
 var NOTICE = "";
 function render(keepScroll) {
-  var i = S.step; $("saStep").innerHTML = (NOTICE ? '<div class="sa-note sa-welcome">' + esc(NOTICE) + "</div>" : "") + VIEW[i]();
+  var i = S.step; S.maxStep = Math.max(+S.maxStep || 0, i);
+  $("saStep").innerHTML = (NOTICE ? '<div class="sa-note sa-welcome">' + esc(NOTICE) + "</div>" : "") + (i >= 8 ? '<p class="sa-backobj"><button type="button" class="sa-btn-s" data-gostep="7">Back to my objectives</button></p>' : "") + VIEW[i]();
+  jumpList();
   $("saBar").style.transform = "scaleX(" + ((i + 1) / STEPS.length) + ")";
   var pl = pagesFor(i) ? pageLabel(i) : "";
   $("saStepNo").textContent = "Step " + (i + 1) + " of " + STEPS.length + ": " + STEPS[i] + (pl ? " (" + pl + ")" : "");
@@ -754,6 +835,16 @@ function render(keepScroll) {
   $("saErr").innerHTML = "";
   if (!keepScroll) { window.scrollTo({ top: 0, behavior: "instant" }); $("saStep").focus({ preventScroll: true }); }
   save();
+}
+/* "Go to step" list: any step the student has already reached */
+function jumpList() {
+  var j = $("saJump"); if (!j) return; var mx = +S.maxStep || S.step;
+  j.innerHTML = STEPS.map(function (n, k) { return '<option value="' + k + '"' + (k === S.step ? " selected" : "") + (k > mx ? " disabled" : "") + ">" + (k + 1) + ". " + esc(n) + (k > mx ? " (not reached yet)" : "") + "</option>"; }).join("");
+}
+function jump(n, page) {
+  var from = S.step; if (n === from && page == null) return;
+  if (n > 5 && from <= 5) { if (!S.tm) setSub(6, 0); S.model = null; refreshPlanRec(); }
+  NOTICE = ""; S.step = n; if (pagesFor(n)) setSub(n, page == null ? 0 : page); render();
 }
 function go(n) { NOTICE = ""; S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
 function soft(x) { return String(x).charAt(0) === "~"; }
@@ -802,7 +893,7 @@ document.addEventListener("click", function (ev) {
   if (ev.target.closest && ev.target.closest("#saOut")) { try { localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} return; }
   var t = ev.target.closest("button"); if (!t) return;
   if (t.id === "saSkip") { next(true); return; }
-  if (t.dataset.gostep !== undefined) { var gs = +t.dataset.gostep, gp = t.dataset.go; NOTICE = ""; S.step = gs; if (pagesFor(gs)) setSub(gs, 0); render(); if (gp) setTimeout(function () { jumpTo(gp); }, 60); return; }
+  if (t.dataset.gostep !== undefined) { var gs = +t.dataset.gostep, gp = t.dataset.go; jump(gs, t.dataset.objpage != null ? +t.dataset.objpage : 0); if (gp) setTimeout(function () { jumpTo(gp); }, 60); return; }
   if (t.dataset.zero) { setp(t.dataset.zero + ".l", "0"); setp(t.dataset.zero + ".c", "cn"); render(true); return; }
   if (t.id === "saWipe") { if (confirm("Sign out of this computer? Your work stays in your account. Sign in with your ID and PIN to continue.")) { try { localStorage.removeItem(DRAFT); localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} IMG = {}; idbSet(imgKey(), {}).then(function () { location.href = "index.html?out=1"; }); } return; }
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
@@ -813,6 +904,15 @@ document.addEventListener("click", function (ev) {
   if (t.dataset.p && /^objs\.\d+\.kpi$/.test(t.dataset.p)) { var oi = +t.dataset.p.split(".")[1], ob = S.objs[oi], kk = (SA.KPIS[ob.type] || []).filter(function (k) { return k[0] === t.dataset.v; })[0]; ob.kpi = t.dataset.v; if (kk) ob.unit = kk[1]; render(true); return; }
   if (t.dataset.p && t.dataset.v !== undefined) { setp(t.dataset.p, t.dataset.v); if (t.dataset.p === "biz.type" || t.dataset.p === "biz.onLocation") { S.model = null; } if (t.dataset.p === "site.has") S.site.has = t.dataset.v; render(true); return; }
   if (t.id === "saEdit") { go(0); return; }
+  if (t.dataset.settarget !== undefined) { var so2 = S.objs[+t.dataset.settarget]; so2.target = t.dataset.v; render(true); return; }
+  if (t.dataset.rebuild !== undefined) { var ro = S.objs[+t.dataset.rebuild]; ro.textEdited = false; ro.text = SA.objSentence(ro, S); render(true); return; }
+  if (t.dataset.tg && /^plan\.strats\.\d+\.on$/.test(t.dataset.tg)) {
+    var ps = S.plan.strats[+t.dataset.tg.split(".")[2]];
+    if (SA.SBY[ps.id].core) { showErr(["Social media marketing is required for every business, so it stays in your plan."], false); return; }
+    ps.on = !ps.on;
+    if (ps.on && !SA.chosen(ps.links).length) { ps.links = {}; (S.objs || []).forEach(function (o) { if (SA.kpiStrats(o).indexOf(ps.id) >= 0) ps.links[o.id] = true; }); }
+    render(true); return;
+  }
   if (t.dataset.tg) { var tp = t.dataset.tg; if (t.dataset.max && !getp(tp)) { var par = tp.slice(0, tp.lastIndexOf(".")); if (SA.chosen(getp(par)).length >= +t.dataset.max) { showErr(["Pick up to " + t.dataset.max + ". Untick one first."]); return; } } setp(tp, !getp(tp)); render(true); return; }
   if (t.id === "saAddSeg") { ensureTm(); S.tm.segs.push(newSeg()); render(true); return; }
   if (t.dataset.rmseg !== undefined) { S.tm.segs.splice(+t.dataset.rmseg, 1); render(); return; }
@@ -820,7 +920,7 @@ document.addEventListener("click", function (ev) {
   if (t.dataset.rm !== undefined) { S.objs.splice(+t.dataset.rm, 1); render(); return; }
   if (t.id === "saPdf") { makeIt(); return; }
   if (t.id === "saGoRev") { go(4); return; }
-  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = stamp(blank()); IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
+  if (t.id === "saNew" || t.id === "saReset") { resetAsk(); return; }
 });
 function onChange(ev) {
   var t = ev.target;
@@ -831,7 +931,9 @@ function onChange(ev) {
   if (t.dataset.num) v = +v;
   setp(t.dataset.p, v);
   var qm = /^objs\.(\d+)\.q\.\d$/.exec(t.dataset.p); if (qm && S.objs[+qm[1]]) S.objs[+qm[1]].qAuto = false;
-  if (t.dataset.sm !== undefined) { var so = $("saObjs") && document.querySelector('[data-smo="' + t.dataset.sm + '"]'); if (so) so.innerHTML = smart(S.objs[+t.dataset.sm]); }
+  if (t.dataset.edit !== undefined) { var eo = S.objs[+t.dataset.edit], oh = $("oh" + t.dataset.edit); if (eo && !eo.textEdited) { eo.textEdited = true; if (oh) oh.innerHTML = 'You edited this sentence. <button type="button" class="sa-btn-s" data-rebuild="' + t.dataset.edit + '">Rebuild it from my choices</button>'; } }
+  if (t.dataset.sm !== undefined && ev.type === "input") { var oi2 = +t.dataset.sm, oo = S.objs[oi2]; if (oo && !oo.textEdited) { oo.text = SA.objSentence(oo, S); var ta = $("ot" + oi2); if (ta) ta.value = oo.text; }
+    var so = document.querySelector('[data-smo="' + oi2 + '"]'); if (so) so.innerHTML = objLive(oo, oi2); var sr = document.querySelector('[data-smr="' + oi2 + '"]'); if (sr) sr.innerHTML = realBox(oo, oi2); }
   if (t.id === "saAgree") { var pb = $("saPdf"); if (pb) pb.disabled = !t.checked; }
   if (t.dataset.bud) {
     refreshBudget();
@@ -874,8 +976,9 @@ function fromB64(b64) { var s = atob(b64), b = new Uint8Array(s.length); for (va
 function payload() { return toB64(JSON.stringify({ v: 1, sid: S.biz.sid, saved: new Date().toISOString(), state: S, img: IMG })); }
 function stepList() { return STEPS.map(function (n, i) { return { name: (i + 1) + ". " + n, state: i < S.step ? "done" : i === S.step ? "now" : "todo" }; }); }
 function saveProgress() {
-  var b = $("saSaveP"); if (!window.jspdf) { toast("The PDF maker did not load. Check your internet connection and refresh the page."); return; } b.disabled = true; var S2 = JSON.parse(JSON.stringify(S)); try { if (S.step >= 5) S2._score = SA.audit(S).overall; } catch (e) {}
-  window.SA_PROGRESS_PDF(S2, stepList(), payload()).then(function () { b.disabled = false; toast("Progress saved as a PDF in your downloads. To continue later, sign in and press Open saved."); }, function (e) { b.disabled = false; toast("Could not save: " + (e && e.message ? e.message : e)); });
+  var b = $("saSaveP"), rb = $("saResetSave"); if (!window.jspdf) { toast("The PDF maker did not load. Check your internet connection and refresh the page."); return; } b.disabled = true; var S2 = JSON.parse(JSON.stringify(S)); try { if (S.step >= 5) S2._score = SA.audit(S).overall; } catch (e) {}
+  if (rb) rb.disabled = true;
+  window.SA_PROGRESS_PDF(S2, stepList(), payload()).then(function () { b.disabled = false; if (rb) { rb.disabled = false; rb.textContent = "Saved. Save again"; } toast("Progress saved as a PDF in your downloads. To continue later, sign in and press Open saved."); }, function (e) { b.disabled = false; if (rb) rb.disabled = false; toast("Could not save: " + (e && e.message ? e.message : e)); });
 }
 function openSaved(file) {
   var fr = new FileReader();
@@ -886,13 +989,41 @@ function openSaved(file) {
     if (!d || !d.state || !d.state.biz) { toast("This file could not be read."); return; }
     if (String(d.sid || "").toUpperCase() !== String(ME.sid || "").toUpperCase()) { toast("This report was saved under another student ID, so it cannot be opened here."); return; }
     if (!confirm("Open this saved report? It replaces the answers in the tool now.")) return;
-    S = stamp(d.state); IMG = d.img || {}; saveImgs(); delete S.tsub; NOTICE = "Saved report opened. You are back on step " + (S.step + 1) + ": " + STEPS[S.step] + "."; render(); toast("Saved report opened.");
+    S = stamp(d.state); SA.migrate(S); IMG = d.img || {}; saveImgs(); delete S.tsub; NOTICE = "Saved report opened. You are back on step " + (S.step + 1) + ": " + STEPS[S.step] + "."; render(); toast("Saved report opened.");
   };
   fr.readAsArrayBuffer(file);
+}
+/* Clear all and start over: says what will be lost, offers a saved copy first, then wipes this device and the account copy */
+function resetAsk() {
+  var old = $("saResetM"); if (old) old.remove();
+  var m = document.createElement("div"); m.className = "sa-modal"; m.id = "saResetM"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "saResetH");
+  m.innerHTML = '<div class="sa-modal-box"><h2 id="saResetH">Clear everything and start over?</h2><p>You will lose:</p><ul>' +
+    "<li><b>All your answers in all 11 steps:</b> the business details, the audit checks and scores, your target market and personas, objectives, strategies, Gantt chart, budget, and control and evaluation.</li>" +
+    "<li><b>Your screenshots.</b></li>" +
+    "<li><b>The copy saved in your account and on this device.</b> You start from a blank tool with nothing to go back to.</li></ul>" +
+    "<p><b>This cannot be undone.</b> Your lecturer keeps the record of any report you already submitted.</p>" +
+    '<div class="sa-note"><b>Want a copy first?</b> Save your progress as a file. If the new start does not work out, press <b>Open saved</b> at the top and choose that file to get everything back.</div>' +
+    '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saResetSave">Save my progress first</button><button type="button" class="btn sa-danger-btn" id="saResetGo">Clear everything</button><button type="button" class="btn btn-ghost" id="saResetNo">Cancel</button></div></div>';
+  document.body.appendChild(m);
+  var close = function () { m.remove(); document.removeEventListener("keydown", esc2); var b = $("saReset"); if (b) b.focus(); };
+  var esc2 = function (ev) { if (ev.key === "Escape") close(); };
+  document.addEventListener("keydown", esc2);
+  m.addEventListener("click", function (ev) { if (ev.target === m) close(); });
+  $("saResetNo").addEventListener("click", close);
+  $("saResetSave").addEventListener("click", function () { saveProgress(); });
+  $("saResetGo").addEventListener("click", function () { m.remove(); document.removeEventListener("keydown", esc2); resetAll(); });
+  setTimeout(function () { $("saResetSave").focus(); }, 30);
+}
+function resetAll() {
+  S = stamp(blank()); S.maxStep = 0; IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {}
+  NOTICE = "Everything was cleared. You are starting a fresh audit."; render();
+  if (CLOUD) { clearTimeout(CT); SAC.saveState(ME.sid, S, ME.name).then(function () { cloudMsg("Saved to your account"); }, function (e) { cloudMsg("Not saved yet: " + SAC.say(e) + " Your answers are kept on this device.", true); }); }
+  toast("Everything was cleared. You are on step 1.");
 }
 var TOASTT = null;
 function toast(m) { var t = $("saToast"); t.textContent = m; t.hidden = false; clearTimeout(TOASTT); TOASTT = setTimeout(function () { t.hidden = true; }, 6000); }
 $("saSaveP").addEventListener("click", saveProgress);
+$("saJump").addEventListener("change", function () { var n = +this.value; if (n <= (+S.maxStep || S.step)) jump(n); });
 $("saOpenP").addEventListener("click", function () { $("saFile").value = ""; $("saFile").click(); });
 $("saFile").addEventListener("change", function () { if (this.files && this.files[0]) openSaved(this.files[0]); });
 /* PDF */
@@ -922,11 +1053,27 @@ $("saTheme").addEventListener("click", function () {
 });
 $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
-window.SA_SET = function (st, img) { S = st; if (img !== undefined) IMG = img || {}; render(); };
+window.SA_SET = function (st, img) { S = st; SA.migrate(S); if (img !== undefined) IMG = img || {}; render(); };
 if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
+/* What's new: shown once to students whose saved work was moved to the new plan layout */
+function showNews() {
+  var m = document.createElement("div"); m.className = "sa-modal"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "saNewsH");
+  m.innerHTML = '<div class="sa-modal-box"><h2 id="saNewsH">What is new in the tool</h2><ul>' +
+    "<li><b>SMART objectives, part by part.</b> You choose the channel, the segment, the numbers and what will drive it. The tool writes the sentence, and you can edit it. It also checks if your target is realistic for 12 months.</li>" +
+    "<li><b>Social media marketing (content and paid ads) is now required,</b> and every plan needs at least 3 strategies.</li>" +
+    "<li><b>Content marketing is split</b> into Social media, Blog articles, Email newsletter and Video.</li>" +
+    "<li><b>The marketing funnel.</b> Your strategies are placed at Awareness, Consideration, Conversion and Loyalty. A direct route (DMs, WhatsApp, Viber, SMS or email) is recommended for the Conversion stage.</li></ul>" +
+    "<p><b>We moved your answers to the new layout.</b> Please check your objectives and strategies, and fill in the new boxes. Anything still missing is listed when you press Next.</p>" +
+    '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saNewsGo">Check my objectives</button><button type="button" class="btn btn-ghost" id="saNewsLater">Later</button></div></div>';
+  document.body.appendChild(m);
+  var close = function () { m.remove(); S.newsPending = false; save(); };
+  $("saNewsLater").addEventListener("click", close);
+  $("saNewsGo").addEventListener("click", function () { close(); if (S.step >= 7) { S.step = 7; setSub(7, 0); render(); } });
+  setTimeout(function () { $("saNewsGo").focus(); }, 30);
+}
 function start(note) {
   if (note) NOTICE = note; else if (RESUMED) NOTICE = "Welcome back. You are on step " + (S.step + 1) + ": " + STEPS[S.step] + ".";
-  LOADED = true; render();
+  LOADED = true; render(); if (S.newsPending && S.step > 0) showNews();
   idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
 }
 if (!CLOUD) start();
@@ -936,7 +1083,7 @@ else {
     if (SAC.sidOf(u) !== ME.sid) { try { localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (e) {} location.replace("index.html"); return; }
     return SAC.profile(ME.sid).then(function (p) {
       var localAt = +S.savedAt || 0, cs = null; try { cs = p && p.state ? JSON.parse(p.state) : null; } catch (e) {}
-      if (cs && cs.biz && (+cs.savedAt || 0) > localAt) { S = stamp(cs); delete S.tsub; RESUMED = S.step > 0; }
+      if (cs && cs.biz && (+cs.savedAt || 0) > localAt) { S = stamp(cs); SA.migrate(S); delete S.tsub; RESUMED = S.step > 0; }
       if (p && p.name && !ME.name) { ME.name = p.name; stamp(S); }
       return SAC.loadImgs(ME.sid).then(function (im) { Object.keys(im).forEach(function (k) { SENT[k] = im[k].length; if (!IMG[k]) IMG[k] = im[k]; }); if (Object.keys(im).length) idbSet(imgKey(), IMG); }, function () {});
     }).then(function () { start(); cloudImgs(); cloudMsg("Saved to your account"); }, function (e) { start(); cloudMsg("Could not load from your account: " + SAC.say(e) + " Using this device's copy.", true); });
