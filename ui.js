@@ -510,7 +510,7 @@ function objCard(o, i) {
   h += '<div class="sa-card"><h3>6. Time-bound: by when</h3>' + chips(c + ".deadline", 'Done by month <span class="sa-pick">Pick one</span>', [3, 6, 9, 12].map(function (m) { return [String(m), "Month " + m]; }), { sm: true, re: true }) +
     (L[0] !== "" ? '<p class="sa-tip">Quarterly milestones (you can change them in step 10): ' + L.map(function (v, k) { return "Q" + (k + 1) + " " + esc(SA.fmtNum(v, o.unit)); }).join(", ") + ", Q4 " + esc(SA.fmtNum(o.target, o.unit)) + ".</p>" : "") + "</div>";
   h += '<div class="sa-card sa-objout"><h3>Your objective</h3><div class="f wide"><label for="ot' + i + '">The tool writes it from your choices. You can edit it.</label><textarea id="ot' + i + '" data-p="' + c + '.text" data-edit="' + i + '" rows="3">' + esc(o.text) + "</textarea>" +
-    (o.textEdited ? '<span class="sa-hint">You edited this sentence. <button type="button" class="sa-btn-s" data-rebuild="' + i + '">Rebuild it from my choices</button></span>' : '<span class="sa-hint">It updates as you choose. Edit it to make it your own.</span>') + "</div>" +
+    (o.textEdited ? '<span class="sa-hint" id="oh' + i + '">You edited this sentence. <button type="button" class="sa-btn-s" data-rebuild="' + i + '">Rebuild it from my choices</button></span>' : '<span class="sa-hint" id="oh' + i + '">It updates as you choose. Edit it to make it your own.</span>') + "</div>" +
     '<div data-smo="' + i + '">' + objLive(o, i) + "</div></div>";
   h += (S.objs.length > 3 ? '<div style="margin-top:8px"><button type="button" class="sa-btn-s" data-rm="' + i + '">Remove this objective</button></div>' : "") + "</div>";
   return h;
@@ -901,8 +901,8 @@ function onChange(ev) {
   if (t.dataset.num) v = +v;
   setp(t.dataset.p, v);
   var qm = /^objs\.(\d+)\.q\.\d$/.exec(t.dataset.p); if (qm && S.objs[+qm[1]]) S.objs[+qm[1]].qAuto = false;
-  if (t.dataset.edit !== undefined) { var eo = S.objs[+t.dataset.edit]; if (eo) eo.textEdited = true; }
-  if (t.dataset.sm !== undefined) { var oi2 = +t.dataset.sm, oo = S.objs[oi2]; if (oo && !oo.textEdited) { oo.text = SA.objSentence(oo, S); var ta = $("ot" + oi2); if (ta) ta.value = oo.text; }
+  if (t.dataset.edit !== undefined) { var eo = S.objs[+t.dataset.edit], oh = $("oh" + t.dataset.edit); if (eo && !eo.textEdited) { eo.textEdited = true; if (oh) oh.innerHTML = 'You edited this sentence. <button type="button" class="sa-btn-s" data-rebuild="' + t.dataset.edit + '">Rebuild it from my choices</button>'; } }
+  if (t.dataset.sm !== undefined && ev.type === "input") { var oi2 = +t.dataset.sm, oo = S.objs[oi2]; if (oo && !oo.textEdited) { oo.text = SA.objSentence(oo, S); var ta = $("ot" + oi2); if (ta) ta.value = oo.text; }
     var so = document.querySelector('[data-smo="' + oi2 + '"]'); if (so) so.innerHTML = objLive(oo, oi2); var sr = document.querySelector('[data-smr="' + oi2 + '"]'); if (sr) sr.innerHTML = realBox(oo, oi2); }
   if (t.id === "saAgree") { var pb = $("saPdf"); if (pb) pb.disabled = !t.checked; }
   if (t.dataset.bud) {

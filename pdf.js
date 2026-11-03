@@ -317,11 +317,11 @@ function build(S, IMG, fonts, logo, dims, opts) {
   para("Student to write in the report: how a customer moves through these stages for this business, and where each strategy takes over.", { size: 8.5, col: MUT, gap: 4 });
 
   /* ---------- how the plan fits together ---------- */
-  head("How the plan fits together", "Each objective needs at least one strategy that moves its KPI. A tick means the strategy is one the tool expects to move that KPI.");
+  head("How the plan fits together", "Each objective needs at least one strategy that moves its KPI. The words (moves the KPI) mark a strategy the tool expects to move that KPI.");
   table([{ w: 22, h: "Objective" }, { w: 44, h: "KPI" }, { w: 80, h: "Strategies that drive it" }, { w: 28, h: "Funnel stage" }],
     S.objs.map(function (o, i) {
       var want = SA.kpiStrats(o), drv = onStrats.filter(function (s) { return (s.links || {})[o.id]; }), stg = SA.FBY[SA.TYPE_STAGE[o.type]];
-      return [{ t: "Objective " + (i + 1), b: true }, o.kpi || "-", drv.length ? { t: drv.map(function (s) { return s.name + (want.indexOf(s.id) >= 0 ? " (tick)" : ""); }).join("; ") } : { t: "None yet", c: MISSC, b: true }, stg ? stg[1] : "-"];
+      return [{ t: "Objective " + (i + 1), b: true }, o.kpi || "-", drv.length ? { t: drv.map(function (s) { return s.name + (want.indexOf(s.id) >= 0 ? " (moves the KPI)" : ""); }).join("; ") } : { t: "None yet", c: MISSC, b: true }, stg ? stg[1] : "-"];
     }), { size: 8, zebra: true });
 
   doc.addPage(); y = TOP;
