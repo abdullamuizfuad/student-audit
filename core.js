@@ -1004,7 +1004,7 @@ var WRITE_GUIDE = [
 /* ---------- SMART objectives: parts, sentence, realistic check ---------- */
 var VERBS = ["Increase", "Grow", "Raise", "Reduce", "Improve"];
 var OBJ_CHANS = ["Instagram", "Facebook", "TikTok", "YouTube", "the website", "the Google profile", "WhatsApp", "email", "booking sites", "all channels"];
-var BASE_SRC = [["audit", "My audit (date checked)"], ["insights", "Platform insights or analytics"], ["records", "The business's own records"], ["estimate", "My estimate (I will explain it)"]];
+var BASE_SRC = [["audit", "My audit, on the date checked"], ["insights", "Platform insights or analytics"], ["records", "The business's own records"], ["estimate", "My estimate (I will explain it)"]];
 var HOW = ["weekly Reels and carousels", "paid social ads aimed at the segment", "a DM offer campaign", "fast WhatsApp replies and follow-ups", "SEO and Google profile updates", "helpful blog articles", "a monthly email newsletter", "a YouTube video series", "an influencer campaign", "a review request after each sale", "a new booking or enquiry page"];
 var REAL = ["The starting number is small, so growth is faster", "Paid ads will speed it up", "Similar businesses reach this level", "The busy season falls in this period", "The business already has demand to work with", "The audit shows an easy gap to fix", "The milestones are spread over the year"];
 var SMART_HELP = {
