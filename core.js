@@ -840,12 +840,12 @@ var SCFG = {
       { k: "rh", q: "How often?", o: [["1", "1 a month"], ["2", "2 a month"]] },
       { k: "list", q: "How will you collect email addresses?", multi: true, o: [["book", "When customers book or order"], ["site", "A sign-up box on the website"], ["wa", "Asking on WhatsApp or in DMs"], ["event", "At events or in the shop"]] },
       { k: "design", q: "Who makes each email?", o: [["team", "The business team with a free template (no cost)"], ["agency", "The agency (MVR 150 a send)"]] },
-      { k: "plat", q: "Sending platform", o: [["free", "A free plan (for example Mailchimp or Brevo free)"], ["paid", "A paid plan (about MVR 300 a month)"]] }
+      { k: "plat", q: "Sending platform", o: [["free", "A free plan (for example Mailchimp or Brevo free)"], ["paid", "A paid plan (about MVR 250 a month)"]] }
     ],
     build: function (v, c) {
       var ms = rng(Math.min(12, c.st + 1), 12), n = +v.rh || 1, L = [];
       L.push(v.design === "agency" ? ML("Newsletter design and send (" + n + " a month)", "Price list", 150, n, ms) : ML("Newsletter by the business team (" + n + " a month)", "Own time", 0, n, ms));
-      if (v.plat === "paid") L.push(ML("Email platform subscription", "Market 2026", 300, 1, rng(c.st, 12)));
+      if (v.plat === "paid") L.push(ML("Email platform subscription", "Market 2026", 250, 1, rng(c.st, 12)));
       return L;
     }
   },
@@ -853,12 +853,12 @@ var SCFG = {
     flow: ["Pick video ideas the segment searches for: tours, how-tos, stories", "Film and edit each video", "Post on YouTube with a clear title and description", "Cut short clips for Reels and stories", "Check views and watch time each month"],
     qs: [
       { k: "n", q: "Videos", o: [["q", "1 every 3 months"], ["1", "1 a month"], ["2", "2 a month"]] },
-      { k: "film", q: "Who films and edits?", o: [["phone", "The business films, the agency edits (about MVR 500 each)"], ["agency", "The agency films and edits (about MVR 1,500 each)"]] },
+      { k: "film", q: "Who films and edits?", o: [["phone", "The business films, the agency edits (about MVR 750 each)"], ["agency", "The agency films and edits (about MVR 2,500 each)"]] },
       { k: "kind", q: "Type of video", multi: true, opt: true, o: [["tour", "A tour of the place or product"], ["how", "How-to or tips"], ["story", "Customer stories"], ["behind", "Behind the scenes"]] }
     ],
     build: function (v, c) {
       var ms = v.n === "q" ? [c.st, c.st + 3, c.st + 6, c.st + 9].filter(function (m) { return m <= 12; }) : rng(c.st, 12), n = v.n === "2" ? 2 : 1;
-      return [ML("Videos (" + (v.n === "q" ? "1 every 3 months" : n + " a month") + ")", "Market 2026", v.film === "agency" ? 1500 : 500, n, ms)];
+      return [ML("Videos (" + (v.n === "q" ? "1 every 3 months" : n + " a month") + ")", "Market 2026", v.film === "agency" ? 2500 : 750, n, ms)];
     }
   },
   banner: {
@@ -882,7 +882,7 @@ var SCFG = {
       { k: "routes", q: "Which direct routes?", multi: true, o: [["dm", "Instagram or Facebook DM campaign (people comment a word, the business replies in DM)"], ["ctwa", "Click-to-WhatsApp ads (the ad opens a WhatsApp chat)"], ["wab", "WhatsApp Business catalogue and broadcasts"], ["viber", "Viber messages"], ["sms", "SMS offers"], ["emailseq", "Email sequences (welcome, offer, reminder)"], ["retarget", "Retargeting ads to people who visited or messaged"]] },
       { k: "offer", q: "What will make people message?", o: [["discount", "A first-time discount"], ["extra", "A free extra or add-on"], ["package", "A limited-time package"], ["quote", "A free quote or consultation"], ["early", "An early-booking price"]] },
       { k: "reply", q: "How fast will the business reply?", o: [["1h", "Within 1 hour"], ["4h", "Within 4 hours"], ["day", "The same day"]], tip: "Fast replies turn more chats into sales." },
-      { k: "who", q: "Who replies and follows up?", o: [["team", "The business team (no cost)"], ["agency", "An agency or virtual assistant (about MVR 1,500 a month)"]] },
+      { k: "who", q: "Who replies and follows up?", o: [["team", "The business team (no cost)"], ["agency", "An agency or virtual assistant (about MVR 3,000 a month)"]] },
       { k: "rh", q: "Broadcast messages (offers and news)", o: [["0", "None, replies only"], ["1", "1 a month"], ["2", "2 a month"], ["4", "Every week"]], tip: "Only to people who agreed to receive them. MVR 150 a message set." },
       { k: "amt", q: "Ad budget for click-to-WhatsApp or retargeting ads, each month", o: [["0", "None"], ["1000", "MVR 1,000"], ["2000", "MVR 2,000"], ["3000", "MVR 3,000"]], hide: function (c) { var r = (c.cfg || {}).routes || {}; return !r.ctwa && !r.retarget; } },
       { k: "mom", q: "Campaigns for key moments", multi: true, opt: true, o: function (c) { return MOMENTS.filter(function (x) { return x[0] !== "peak" || c.season; }).map(function (x) { return [x[1], x[1]]; }); }, tip: "Each campaign month costs MVR 2,500 for all its messages and designs. Months are approximate." },
@@ -891,10 +891,10 @@ var SCFG = {
     ],
     build: function (v, c) {
       var st = c.st, ms = rng(st, 12), r = v.routes || {}, L = [], n = +v.rh || 0;
-      if (r.dm || r.wab || r.viber || r.ctwa) L.push(ML("Replying to chats and taking bookings or orders", v.who === "agency" ? "Market 2026" : "Own time", v.who === "agency" ? 1500 : 0, 1, ms));
+      if (r.dm || r.wab || r.viber || r.ctwa) L.push(ML("Replying to chats and taking bookings or orders", v.who === "agency" ? "Market 2026" : "Own time", v.who === "agency" ? 3000 : 0, 1, ms));
       if (n && (r.wab || r.viber || r.sms || r.emailseq)) L.push(ML("Broadcast messages (" + n + " a month)", "Price list", 150, n, rng(Math.min(12, st + 1), 12)));
       if (r.sms) L.push(ML("SMS sending bundle", "Market 2026", 300, 1, ms));
-      if (r.emailseq) { L.push(ML("Email sequence set-up with templates", "Price list", 2500, 1, [st])); L.push(ML("Email platform subscription", "Market 2026", 300, 1, ms)); }
+      if (r.emailseq) { L.push(ML("Email sequence set-up with templates", "Price list", 2500, 1, [st])); L.push(ML("Email platform subscription", "Market 2026", 250, 1, ms)); }
       var amt = +v.amt || 0, ad = [r.ctwa ? "click-to-WhatsApp" : "", r.retarget ? "retargeting" : ""].filter(Boolean);
       if (amt && ad.length) L.push(ML("Ad spend: " + ad.join(" and ") + " ads", "At cost", amt, 1, ms));
       var mm = momentMonths(v.mom, c.lab).filter(function (m) { return m >= st; });
@@ -1057,7 +1057,7 @@ function realism(o) {
   }
   if (/review/.test(k) && !/rating/.test(k)) { var add = (t - b) / m; return add > 20 ? R("veryhigh", "About " + Math.round(add) + " new reviews a month is very ambitious for a small business.", Math.round(b + 8 * m)) : add > 8 ? R("high", "About " + Math.round(add) + " new reviews a month. Ask every customer.", Math.round(b + 6 * m)) : R("ok", "Realistic: about " + Math.max(1, Math.round(add)) + " new reviews a month."); }
   var g = Math.pow(t / b, 1 / m) - 1, okG = 0.06, hiG = 0.12;
-  if (/follower/.test(k)) { okG = 0.08; hiG = 0.15; }
+  if (/follower/.test(k)) { okG = 0.10; hiG = 0.15; } // lecturer: 8 to 10% a month is fine
   else if (/visitor|views|reach|traffic|profile/.test(k)) { okG = 0.10; hiG = 0.20; }
   else if (/booking|order|sale|enquir|message|repeat|referr|subscriber/.test(k)) { okG = 0.04; hiG = 0.08; }
   var total = Math.round((t / b - 1) * 100), sug = Math.round(b * Math.pow(1 + okG, m)), sugTxt = sug >= 10 ? Math.round(sug / 10) * 10 : sug;

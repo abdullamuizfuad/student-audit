@@ -309,6 +309,8 @@ function build(S, IMG, fonts, logo, dims, opts) {
     F("fr", 8.2, list.length ? INK : MISSC);
     var ln = split(list.length ? names.join("; ") : (f[0] === "convert" ? "No strategy turns interest into a sale yet." : "No strategy at this stage yet."), rw);
     tx(ln.slice(0, 3).join("\n"), rx, ry);
+    var obN = []; (S.objs || []).forEach(function (o, i) { if (SA.TYPE_STAGE[o.type] === f[0]) obN.push(i + 1); });
+    F("fr", 7.8, MUT); tx(obN.length ? "Objectives here: " + obN.join(", ") : (f[0] === "loyal" ? "No objective here (optional)." : "No objective at this stage yet."), rx, ry + Math.min(3, ln.length) * 3.6 + 0.6);
   });
   y = fy + BH * 4 + 6;
   var directOn = onStrats.some(function (s) { return s.id === "direct"; }), sig = [];

@@ -456,10 +456,33 @@ function modelStuff() {
 }
 function recs() { return SA.makeStrategies(SA.audit(S), S, S.objs || []); }
 function tName(t) { return { aware: "Awareness", engage: "Engagement", sales: "Sales", loyal: "Loyalty" }[t] || ""; }
-function funnelMix() {
-  var have = {}; (S.objs || []).forEach(function (o) { if (o.type) have[o.type] = 1; });
-  return '<div class="sa-funnelmix"><b>Your objectives across the funnel:</b> ' + [["aware", "Awareness"], ["engage", "Engagement"], ["sales", "Sales"], ["loyal", "Loyalty (optional)"]].map(function (x) { return '<span class="' + (have[x[0]] ? "ok" : "no") + '">' + x[1] + ": " + (have[x[0]] ? "yes" : "not yet") + "</span>"; }).join("") +
-    '<p class="sa-ms">A good plan moves people through the funnel: they notice the business (Awareness), interact and start to trust it (Engagement), then enquire and buy (Sales), then come back (Loyalty). Aim for one objective at each of the first three stages.</p></div>';
+var STCOL = { aware: "#245582", consider: "#2a82bb", convert: "#1e7850", loyal: "#1f7f7f" };
+var LOYAL_TXT = "Loyalty is the fourth, optional kind. It is about the customers the business already has: getting them to come back, buy again and recommend it to friends. You measure it with repeat customers, referrals and reviews. Choose it when the business already has customers but few return, or it has few reviews.";
+/* The funnel: a drawn funnel on the left, and for each stage the objectives and strategies that sit there. where = "obj" (objectives page) or "plan" (strategies page). */
+function funnelViz(where) {
+  var on = S.plan && S.plan.strats ? S.plan.strats.filter(function (s) { return s.on; }) : [], objs = S.objs || [], W = [100, 82, 64, 46, 30], empty = 0;
+  var rows = SA.FUNNEL.map(function (f, k) {
+    var st = on.filter(function (s) { return stagesOf(s).indexOf(f[0]) >= 0; }), ob = [];
+    objs.forEach(function (o, i) { if (SA.TYPE_STAGE[o.type] === f[0]) ob.push(i); });
+    var opt = f[0] === "loyal", n = where === "obj" ? ob.length : st.length, gap = !n && !opt;
+    if (gap) empty++;
+    var h = '<li class="sa-fz-row' + (gap ? " gap" : "") + '" style="--c:' + STCOL[f[0]] + '"><div class="sa-fz-band" style="--t:' + W[k] + "%;--b:" + W[k + 1] + '%" aria-hidden="true"><span>' + n + "</span></div><div class=\"sa-fz-txt\">" +
+      "<p><b>" + (k + 1) + ". " + f[1] + (opt ? " (optional)" : "") + "</b> " + esc(f[2]) + ".</p>";
+    h += '<p class="sa-fz-line"><span>Objectives:</span> ' + (ob.length ? ob.map(function (i) { return '<button type="button" class="sa-fz-tag" data-gostep="7" data-objpage="' + i + '">Objective ' + (i + 1) + "</button>"; }).join("") : '<em>' + (opt ? "None. That is fine." : "None yet") + "</em>") + "</p>";
+    if (where === "plan") {
+      h += '<p class="sa-fz-line"><span>Strategies:</span> ' + (st.length ? st.map(function (s) { return '<i class="sa-fz-s">' + esc(s.name.split(" (")[0]) + "</i>"; }).join("") : "<em>None yet</em>") + "</p>";
+      if (!st.length) {
+        var sug = S.plan.strats.map(function (s, i) { return { s: s, i: i }; }).filter(function (x) { return !x.s.on && ((SA.SBY[x.s.id] || {}).stages || []).indexOf(f[0]) >= 0; }).sort(function (a, b) { return (b.s.rec ? 1 : 0) - (a.s.rec ? 1 : 0); }).slice(0, 2);
+        if (sug.length) h += '<p class="sa-fz-line sa-fz-fix"><span>Quick fix:</span> ' + sug.map(function (x) { return '<button type="button" class="sa-chip sm" data-tg="plan.strats.' + x.i + '.on">+ ' + esc(x.s.name.split(" (")[0]) + "</button>"; }).join("") + "</p>";
+      }
+    } else if (opt) h += '<p class="sa-ms">' + esc(LOYAL_TXT) + "</p>";
+    return h + "</div></li>";
+  }).join("");
+  var head = where === "obj" ? "Your objectives across the funnel" : "Your plan across the funnel";
+  var sub = where === "obj" ? "A sound plan moves people through the funnel. We strongly encourage one objective each at Awareness, Engagement and Sales. The number in the funnel is how many objectives sit at that stage."
+    : "Each stage needs at least one strategy, so customers do not stop halfway. The number in the funnel is how many strategies work at that stage.";
+  var sum = empty ? '<p class="sa-fz-sum no">' + empty + " of the first three stages " + (empty === 1 ? "has" : "have") + " nothing yet.</p>" : '<p class="sa-fz-sum ok">Every main stage is covered.</p>';
+  return '<div class="sa-card sa-fz"><h3>' + head + '</h3><p class="sa-sub">' + sub + "</p>" + sum + '<ol class="sa-fz-list">' + rows + "</ol></div>";
 }
 function objGuide() {
   return '<details class="sa-hints"><summary>What makes an objective SMART?</summary><ul class="sa-hl">' +
@@ -491,7 +514,7 @@ function objCard(o, i) {
   var c = "objs." + i, A = SA.audit(S), tg = (S.tm && S.tm.segs || []).filter(function (g) { return g.target === "yes"; }), L = (function () { var x = linQ(o); return x; })();
   var stage = SA.FBY[SA.TYPE_STAGE[o.type]];
   var h = '<div class="sa-obj">';
-  h += '<div class="sa-card"><h3>1. Kind of objective</h3>' + chips(c + ".type", 'Which funnel stage does it move? <span class="sa-pick">Pick one</span>', SA.OBJ_TYPES, { sm: true, re: true }) + (stage ? '<p class="sa-tip">Funnel stage: <b>' + stage[1] + "</b>. " + esc(stage[2]) + ".</p>" : "") + "</div>";
+  h += '<div class="sa-card"><h3>1. Kind of objective</h3>' + chips(c + ".type", 'Which funnel stage does it move? <span class="sa-pick">Pick one</span>', SA.OBJ_TYPES, { sm: true, re: true }) + (stage ? '<p class="sa-tip">Funnel stage: <b>' + stage[1] + "</b>. " + esc(stage[2]) + ".</p>" : "") + '<details class="sa-hints"' + (o.type === "loyal" ? " open" : "") + '><summary>What is a Loyalty objective?</summary><p class="sa-ms">' + esc(LOYAL_TXT) + '</p><p class="sa-ms"><b>Example:</b> "Increase repeat bookings from returning guests from 10 to 25 a month by month 12 through a thank-you WhatsApp message with a repeat offer and a monthly email newsletter."</p></details></div>';
   h += '<div class="sa-card"><h3>2. Specific: what changes, where, for whom</h3>' +
     chips(c + ".verb", 'Action <span class="sa-pick">Pick one</span>', SA.VERBS.map(function (v) { return [v, v]; }), { sm: true, re: true }) +
     (o.type ? chips(c + ".kpi", 'KPI <span class="sa-pick">Pick one, or type your own below</span>', SA.KPIS[o.type].map(function (k) { return [k[0], k[0]]; }), { sm: true }) : '<p class="sa-tip">Pick the kind of objective first to see KPI ideas.</p>') +
@@ -525,7 +548,7 @@ function viewObj() {
   ensureObjs(); var i = curIdx(7), o = S.objs[i];
   var h = '<h1 class="sa-h">Objective ' + (i + 1) + " of " + S.objs.length + "</h1>";
   if (i === 0) h += '<p class="sa-lede">The assignment needs at least three SMART objectives. Build each one part by part. The tool writes the sentence, checks if the target is realistic, and shows which SMART parts are still missing.</p>';
-  return h + funnelMix() + objGuide() + '<div id="saObjs">' + objCard(o, i) + "</div>";
+  return h + funnelViz("obj") + objGuide() + '<div id="saObjs">' + objCard(o, i) + "</div>";
 }
 function vObj() {
   ensureObjs(); var e = [];
@@ -595,12 +618,7 @@ function budgetHtml() {
 function stPages() { ensurePlan(); var P = ["pick"]; S.plan.strats.forEach(function (s, i) { if (s.on) P.push("st:" + i); }); P.push("budget"); return P; }
 function stagesOf(s) { var st = SA.chosen(s.stages); return st.length ? st : (SA.SBY[s.id] || {}).stages || []; }
 function stageTags(s) { return '<span class="sa-stages">' + stagesOf(s).map(function (x) { return '<i class="st-' + x + '">' + SA.FBY[x][1] + "</i>"; }).join("") + "</span>"; }
-function funnelCard() {
-  var on = S.plan.strats.filter(function (s) { return s.on; });
-  return '<div class="sa-card sa-funnel"><h3>The marketing funnel</h3><p class="sa-sub">Customers move through four stages. Your plan needs strategies that work at each stage, so people do not stop halfway.</p><ol class="sa-fstages">' +
-    SA.FUNNEL.map(function (f) { var here = on.filter(function (s) { return stagesOf(s).indexOf(f[0]) >= 0; }); return '<li class="st-' + f[0] + '"><b>' + f[1] + "</b> <span>" + esc(f[2]) + '.</span><em class="' + (here.length ? "" : "none") + '">' + (here.length ? esc(here.map(function (s) { return s.name.split(" (")[0]; }).join(", ")) : "Nothing here yet") + "</em></li>"; }).join("") + "</ol>" +
-    '<p class="sa-ms">Your main funnel assets and examples are explained in class. <!-- placeholder: lecturer funnel assets from the Social Media Health Check go here --></p></div>';
-}
+function funnelCard() { return funnelViz("plan"); }
 function pickCard(s, i, M, extra) {
   var sd = SA.SBY[s.id], m = M.strats.filter(function (x) { return x.id === s.id; })[0] || {}, objs = (m.objs || []).map(function (k) { return "Objective " + (k + 1); });
   return '<button type="button" class="sa-pickcard' + (sd.core ? " core" : "") + '" data-tg="plan.strats.' + i + '.on" aria-pressed="' + !!s.on + '"><span class="nm">' + esc(s.name) + (sd.core ? ' <small class="req">Required</small>' : "") + "</span>" + stageTags(s) + '<span class="ds">' + esc(SA.STRAT_DESC[s.id] || "") + "</span>" +
@@ -800,7 +818,9 @@ function stepsSkip(i, dir) { return i; }
 
 var NOTICE = "";
 function render(keepScroll) {
-  var i = S.step; $("saStep").innerHTML = (NOTICE ? '<div class="sa-note sa-welcome">' + esc(NOTICE) + "</div>" : "") + VIEW[i]();
+  var i = S.step; S.maxStep = Math.max(+S.maxStep || 0, i);
+  $("saStep").innerHTML = (NOTICE ? '<div class="sa-note sa-welcome">' + esc(NOTICE) + "</div>" : "") + (i >= 8 ? '<p class="sa-backobj"><button type="button" class="sa-btn-s" data-gostep="7">Back to my objectives</button></p>' : "") + VIEW[i]();
+  jumpList();
   $("saBar").style.transform = "scaleX(" + ((i + 1) / STEPS.length) + ")";
   var pl = pagesFor(i) ? pageLabel(i) : "";
   $("saStepNo").textContent = "Step " + (i + 1) + " of " + STEPS.length + ": " + STEPS[i] + (pl ? " (" + pl + ")" : "");
@@ -815,6 +835,16 @@ function render(keepScroll) {
   $("saErr").innerHTML = "";
   if (!keepScroll) { window.scrollTo({ top: 0, behavior: "instant" }); $("saStep").focus({ preventScroll: true }); }
   save();
+}
+/* "Go to step" list: any step the student has already reached */
+function jumpList() {
+  var j = $("saJump"); if (!j) return; var mx = +S.maxStep || S.step;
+  j.innerHTML = STEPS.map(function (n, k) { return '<option value="' + k + '"' + (k === S.step ? " selected" : "") + (k > mx ? " disabled" : "") + ">" + (k + 1) + ". " + esc(n) + (k > mx ? " (not reached yet)" : "") + "</option>"; }).join("");
+}
+function jump(n, page) {
+  var from = S.step; if (n === from && page == null) return;
+  if (n > 5 && from <= 5) { if (!S.tm) setSub(6, 0); S.model = null; refreshPlanRec(); }
+  NOTICE = ""; S.step = n; if (pagesFor(n)) setSub(n, page == null ? 0 : page); render();
 }
 function go(n) { NOTICE = ""; S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
 function soft(x) { return String(x).charAt(0) === "~"; }
@@ -863,7 +893,7 @@ document.addEventListener("click", function (ev) {
   if (ev.target.closest && ev.target.closest("#saOut")) { try { localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} return; }
   var t = ev.target.closest("button"); if (!t) return;
   if (t.id === "saSkip") { next(true); return; }
-  if (t.dataset.gostep !== undefined) { var gs = +t.dataset.gostep, gp = t.dataset.go; NOTICE = ""; S.step = gs; if (pagesFor(gs)) setSub(gs, 0); render(); if (gp) setTimeout(function () { jumpTo(gp); }, 60); return; }
+  if (t.dataset.gostep !== undefined) { var gs = +t.dataset.gostep, gp = t.dataset.go; jump(gs, t.dataset.objpage != null ? +t.dataset.objpage : 0); if (gp) setTimeout(function () { jumpTo(gp); }, 60); return; }
   if (t.dataset.zero) { setp(t.dataset.zero + ".l", "0"); setp(t.dataset.zero + ".c", "cn"); render(true); return; }
   if (t.id === "saWipe") { if (confirm("Sign out of this computer? Your work stays in your account. Sign in with your ID and PIN to continue.")) { try { localStorage.removeItem(DRAFT); localStorage.removeItem("ia-student"); sessionStorage.removeItem("ia-student"); } catch (x) {} IMG = {}; idbSet(imgKey(), {}).then(function () { location.href = "index.html?out=1"; }); } return; }
   if (t.dataset.go) { jumpTo(t.dataset.go); return; }
@@ -890,7 +920,7 @@ document.addEventListener("click", function (ev) {
   if (t.dataset.rm !== undefined) { S.objs.splice(+t.dataset.rm, 1); render(); return; }
   if (t.id === "saPdf") { makeIt(); return; }
   if (t.id === "saGoRev") { go(4); return; }
-  if (t.id === "saNew") { if (confirm("Start another audit? Your current answers will be cleared from this page.")) { S = stamp(blank()); IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {} render(); } }
+  if (t.id === "saNew" || t.id === "saReset") { resetAsk(); return; }
 });
 function onChange(ev) {
   var t = ev.target;
@@ -946,8 +976,9 @@ function fromB64(b64) { var s = atob(b64), b = new Uint8Array(s.length); for (va
 function payload() { return toB64(JSON.stringify({ v: 1, sid: S.biz.sid, saved: new Date().toISOString(), state: S, img: IMG })); }
 function stepList() { return STEPS.map(function (n, i) { return { name: (i + 1) + ". " + n, state: i < S.step ? "done" : i === S.step ? "now" : "todo" }; }); }
 function saveProgress() {
-  var b = $("saSaveP"); if (!window.jspdf) { toast("The PDF maker did not load. Check your internet connection and refresh the page."); return; } b.disabled = true; var S2 = JSON.parse(JSON.stringify(S)); try { if (S.step >= 5) S2._score = SA.audit(S).overall; } catch (e) {}
-  window.SA_PROGRESS_PDF(S2, stepList(), payload()).then(function () { b.disabled = false; toast("Progress saved as a PDF in your downloads. To continue later, sign in and press Open saved."); }, function (e) { b.disabled = false; toast("Could not save: " + (e && e.message ? e.message : e)); });
+  var b = $("saSaveP"), rb = $("saResetSave"); if (!window.jspdf) { toast("The PDF maker did not load. Check your internet connection and refresh the page."); return; } b.disabled = true; var S2 = JSON.parse(JSON.stringify(S)); try { if (S.step >= 5) S2._score = SA.audit(S).overall; } catch (e) {}
+  if (rb) rb.disabled = true;
+  window.SA_PROGRESS_PDF(S2, stepList(), payload()).then(function () { b.disabled = false; if (rb) { rb.disabled = false; rb.textContent = "Saved. Save again"; } toast("Progress saved as a PDF in your downloads. To continue later, sign in and press Open saved."); }, function (e) { b.disabled = false; if (rb) rb.disabled = false; toast("Could not save: " + (e && e.message ? e.message : e)); });
 }
 function openSaved(file) {
   var fr = new FileReader();
@@ -962,9 +993,37 @@ function openSaved(file) {
   };
   fr.readAsArrayBuffer(file);
 }
+/* Clear all and start over: says what will be lost, offers a saved copy first, then wipes this device and the account copy */
+function resetAsk() {
+  var old = $("saResetM"); if (old) old.remove();
+  var m = document.createElement("div"); m.className = "sa-modal"; m.id = "saResetM"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "saResetH");
+  m.innerHTML = '<div class="sa-modal-box"><h2 id="saResetH">Clear everything and start over?</h2><p>You will lose:</p><ul>' +
+    "<li><b>All your answers in all 11 steps:</b> the business details, the audit checks and scores, your target market and personas, objectives, strategies, Gantt chart, budget, and control and evaluation.</li>" +
+    "<li><b>Your screenshots.</b></li>" +
+    "<li><b>The copy saved in your account and on this device.</b> You start from a blank tool with nothing to go back to.</li></ul>" +
+    "<p><b>This cannot be undone.</b> Your lecturer keeps the record of any report you already submitted.</p>" +
+    '<div class="sa-note"><b>Want a copy first?</b> Save your progress as a file. If the new start does not work out, press <b>Open saved</b> at the top and choose that file to get everything back.</div>' +
+    '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saResetSave">Save my progress first</button><button type="button" class="btn sa-danger-btn" id="saResetGo">Clear everything</button><button type="button" class="btn btn-ghost" id="saResetNo">Cancel</button></div></div>';
+  document.body.appendChild(m);
+  var close = function () { m.remove(); document.removeEventListener("keydown", esc2); var b = $("saReset"); if (b) b.focus(); };
+  var esc2 = function (ev) { if (ev.key === "Escape") close(); };
+  document.addEventListener("keydown", esc2);
+  m.addEventListener("click", function (ev) { if (ev.target === m) close(); });
+  $("saResetNo").addEventListener("click", close);
+  $("saResetSave").addEventListener("click", function () { saveProgress(); });
+  $("saResetGo").addEventListener("click", function () { m.remove(); document.removeEventListener("keydown", esc2); resetAll(); });
+  setTimeout(function () { $("saResetSave").focus(); }, 30);
+}
+function resetAll() {
+  S = stamp(blank()); S.maxStep = 0; IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {}
+  NOTICE = "Everything was cleared. You are starting a fresh audit."; render();
+  if (CLOUD) { clearTimeout(CT); SAC.saveState(ME.sid, S, ME.name).then(function () { cloudMsg("Saved to your account"); }, function (e) { cloudMsg("Not saved yet: " + SAC.say(e) + " Your answers are kept on this device.", true); }); }
+  toast("Everything was cleared. You are on step 1.");
+}
 var TOASTT = null;
 function toast(m) { var t = $("saToast"); t.textContent = m; t.hidden = false; clearTimeout(TOASTT); TOASTT = setTimeout(function () { t.hidden = true; }, 6000); }
 $("saSaveP").addEventListener("click", saveProgress);
+$("saJump").addEventListener("change", function () { var n = +this.value; if (n <= (+S.maxStep || S.step)) jump(n); });
 $("saOpenP").addEventListener("click", function () { $("saFile").value = ""; $("saFile").click(); });
 $("saFile").addEventListener("change", function () { if (this.files && this.files[0]) openSaved(this.files[0]); });
 /* PDF */
