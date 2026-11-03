@@ -1,0 +1,47 @@
+rules_version = '2';
+// Student Audit (MKT303). Paste into Firebase console > Firestore Database > Rules > Publish.
+// Students sign in with their student ID and a 6-digit PIN (Firebase email/password: s0xxxxx@student.mnu.edu.mv + PIN).
+// A student can only read and write their own work, and only if their ID is on the class list (roster).
+// The lecturer is anyone with a document in /admins/{uid} (add it by hand in the console).
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
+    function isStudent(sid) {
+      return signedIn()
+        && request.auth.token.email == sid.lower() + '@student.mnu.edu.mv'
+        && exists(/databases/$(db)/documents/roster/$(sid));
+    }
+
+    // Class list: one document per student ID, for example roster/S000001. Only the lecturer can see the list.
+    match /roster/{sid} {
+      allow get: if isStudent(sid) || isAdmin();
+      allow list, write: if isAdmin();
+    }
+
+    // Saved progress (answers) and screenshots.
+    match /progress/{sid} {
+      allow read: if isStudent(sid) || isAdmin();
+      allow write: if isStudent(sid);
+      match /img/{imgId} {
+        allow read: if isStudent(sid) || isAdmin();
+        allow write: if isStudent(sid);
+      }
+    }
+
+    // Final report summary (code, score, business) for the lecturer's list.
+    match /submissions/{sid} {
+      allow read: if isStudent(sid) || isAdmin();
+      allow create, update: if isStudent(sid);
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /{other=**} {
+      allow read, write: if false;
+    }
+  }
+}
