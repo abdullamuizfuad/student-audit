@@ -22,6 +22,8 @@
     }, function (e) { msg("adLoginMsg", "Could not check the lecturer account: " + (e.code || e.message), true); });
   });
 
+  /* A QR code on a student's PDF opens admin.html#code=XXXX: that code is checked and its row highlighted */
+  var WANT = (function () { var m = /code=([A-Za-z0-9]+)/.exec(location.hash || ""); return m ? m[1].toUpperCase() : ""; })();
   function load() {
     $("adTbl").innerHTML = "<tr><td>Loading...</td></tr>";
     Promise.all([db.collection("roster").get(), db.collection("progress").get(), db.collection("submissions").get()]).then(function (r) {
@@ -34,11 +36,20 @@
       $("adStats").innerHTML = "<span>" + list.filter(function (x) { return !x.off; }).length + " on the class list</span><span>" + started + " started</span><span>" + done + " downloaded a final PDF</span>" + (dups ? '<span class="ad-dup">' + dups + " repeated code" + (dups > 1 ? "s" : "") + "</span>" : "");
       $("adTbl").innerHTML = "<tr><th>Student ID</th><th>Name</th><th>Step</th><th>Business</th><th>Last saved</th><th>Final PDF code</th><th>Score</th><th>Budget (MVR)</th><th>Skipped</th><th></th></tr>" +
         list.map(function (x) {
-          var s = x.sub || {}, dup = s.code && codes[s.code] > 1;
-          return "<tr><td>" + esc(x.id.toUpperCase()) + (x.off ? " <small>(not on list)</small>" : "") + "</td><td>" + esc(x.name || "") + "</td><td>" + (x.step != null ? (x.step + 1) + ". " + esc(STEPS[x.step] || "") : "Not started") + "</td><td>" + esc(x.business || "") + "</td><td>" + esc(when(x.updated)) + "</td>" +
+          var s = x.sub || {}, dup = s.code && codes[s.code] > 1, hit = WANT && s.code === WANT;
+          return "<tr" + (hit ? ' class="ad-hit" id="adHit"' : "") + "><td>" + esc(x.id.toUpperCase()) + (x.off ? " <small>(not on list)</small>" : "") + "</td><td>" + esc(x.name || "") + "</td><td>" + (x.step != null ? (x.step + 1) + ". " + esc(STEPS[x.step] || "") : "Not started") + "</td><td>" + esc(x.business || "") + "</td><td>" + esc(when(x.updated)) + "</td>" +
             '<td class="' + (dup ? "ad-dup" : "") + '">' + esc(s.code || "") + (dup ? " (same as another student)" : "") + "</td><td>" + (s.overall != null ? s.overall + "/100" : "") + "</td><td>" + (s.budget != null ? Math.round(s.budget).toLocaleString("en-US") : "") + "</td><td>" + (s.skipped != null ? s.skipped : "") + "</td>" +
             "<td>" + (x.off ? "" : '<button type="button" class="ad-x" data-rm="' + esc(x.id) + '">Remove</button>') + "</td></tr>";
         }).join("");
+      if (WANT) {
+        var hits = list.filter(function (x) { return x.sub && x.sub.code === WANT; });
+        $("adCheck").hidden = false;
+        $("adCheck").innerHTML = hits.length === 1 ? "<b>Code " + esc(WANT) + " is genuine.</b> It belongs to " + esc(hits[0].id.toUpperCase()) + (hits[0].name ? " (" + esc(hits[0].name) + ")" : "") + (hits[0].sub.business ? ", business: " + esc(hits[0].sub.business) : "") + ". Check that the name on the assignment matches."
+          : hits.length > 1 ? "<b>Code " + esc(WANT) + " was downloaded by " + hits.length + " students:</b> " + hits.map(function (x) { return esc(x.id.toUpperCase()); }).join(", ") + ". They handed in the same work."
+          : "<b>Code " + esc(WANT) + " was not found.</b> No student downloaded a final PDF with this code. The PDF may have been edited, or the student made a newer PDF since. Ask the student.";
+        $("adCheck").className = "ad-check " + (hits.length === 1 ? "ok" : "bad");
+        var hr = $("adHit"); if (hr) hr.scrollIntoView({ block: "center" });
+      }
     }, function (e) { $("adTbl").innerHTML = "<tr><td>Could not load: " + esc(e.code || e.message) + "</td></tr>"; });
   }
   $("adReload").addEventListener("click", load);

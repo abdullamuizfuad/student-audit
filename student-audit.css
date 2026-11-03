@@ -397,3 +397,8 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.6}
 .sa-fz-tag{font:inherit;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px;border:1.5px solid var(--c);background:transparent;color:var(--ink);cursor:pointer}
 .sa-fz-fix .sa-chip{margin:0}
 @media(max-width:400px){.sa-fz-row{grid-template-columns:64px minmax(0,1fr);gap:10px}}
+/* ---------- automatic website tests ---------- */
+.sa-auto{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--raised);border:1px dashed var(--line)}
+.sa-auto h3{margin:0 0 4px;font-size:1rem}
+.sa-auto-r{margin:6px 0;font-size:.9rem;overflow-wrap:anywhere}
+.sa-auto-shot{display:block;max-width:100%;max-height:260px;margin:8px 0;border:1px solid var(--line);border-radius:8px}
