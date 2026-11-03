@@ -1,3 +1,16 @@
+/* Maintenance notice: shows until Wednesday 4 November 2026, 8:00 am Maldives time, then turns itself off. Add ?preview=1 to the address to skip it. */
+(function () {
+  try {
+    if (/[?&]preview=1/.test(location.search)) sessionStorage.setItem("ia-preview", "1");
+    if (sessionStorage.getItem("ia-preview") === "1" || Date.now() >= Date.parse("2026-11-04T08:00:00+05:00")) return;
+    if (/tool\.html/.test(location.pathname)) { location.replace("index.html"); return; }
+    var d = document.createElement("div");
+    d.setAttribute("role", "alertdialog"); d.setAttribute("aria-modal", "true");
+    d.style.cssText = "position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,42,64,.92)";
+    d.innerHTML = '<div style="max-width:440px;background:#fff;color:#1d2b34;border-radius:18px;padding:24px;font:16px/1.5 Figtree,system-ui,sans-serif;text-align:center"><h2 style="margin:0 0 8px;font-size:22px">Down for maintenance</h2><p style="margin:0 0 8px">We are improving the Student Audit tool so it is easier to use.</p><p style="margin:0"><b>It will be back on Wednesday 4 November at 8:00 am.</b> Your saved progress reports will still open.</p></div>';
+    document.body.appendChild(d);
+  } catch (e) {}
+})();
 
 (function () {
   var logo = document.getElementById('il-logo');
