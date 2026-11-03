@@ -15,7 +15,8 @@ function loadLogo() {
   return fetch("assets/logo.png").then(function (r) { return r.arrayBuffer(); }).then(function (b) { LOGO = "data:image/png;base64," + b64(b); return LOGO; }, function () { LOGO = ""; return LOGO; });
 }
 function imgSize(src) { return new Promise(function (res) { var i = new Image(); i.onload = function () { res({ w: i.width, h: i.height }); }; i.onerror = function () { res(null); }; i.src = src; }); }
-function safe(s) { return String(s == null ? "" : s).replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\n -~ -ÿ]/g, ""); }
+function safe(s) { s = String(s == null ? "" : s); var dv = /[\u0780-\u07BF]/.test(s); return safe0(s) + (dv ? " [Dhivehi text: see the screenshot]" : ""); }
+function safe0(s) { return String(s == null ? "" : s).replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\n -~ -ÿ]/g, ""); }
 
 /* Saves the PDF with the student's answers tucked in after the end of the file, so the tool can reload it later. */
 function saveWithData(doc, nm, embed) {
@@ -130,6 +131,7 @@ function build(S, IMG, fonts, logo, dims, opts) {
   }
 
   /* ---------- page 1: title and scores ---------- */
+  var gaps = Array.isArray(S.gaps) ? S.gaps.filter(function (g) { return g && g.text; }) : [];
   var tier = A.overall >= 75 ? "good" : A.overall >= 50 ? "warn" : "bad";
   fill(ACC); doc.rect(0, 22, W, 46, "F");
   F("fb", 7.5, [200, 225, 240]); tx("STUDENT AUDIT  |  CHECKED " + S.biz.checked, M, 31);
@@ -139,9 +141,10 @@ function build(S, IMG, fonts, logo, dims, opts) {
   fill(WHITE); doc.circle(W - M - 20, 45, 17, "F"); ring(W - M - 20, 45, 16, 12.5, A.overall, COL[tier], [232, 238, 242]);
   F("ax", 26, INK); tx(String(A.overall), W - M - 20, 48.5, { align: "center" }); F("fb", 6.5, MUT); tx("OUT OF 100", W - M - 20, 53.5, { align: "center" });
   y = 78;
-  fill(tint([201, 138, 27], 0.82)); doc.roundedRect(M, y - 5, CW, 13, 3, 3, "F");
+  F("fr", 8.5); var nl = split("The audit scores come from fixed rules applied to what the student observed. The target market, personas, objectives, strategy reasoning and evaluation plan were written by the student. The tool laid them out and calculated the Gantt chart and the budget." + (S.code ? " Submission code " + S.code + "." : "") + (gaps.length ? " The student skipped " + gaps.length + " answer" + (gaps.length === 1 ? "" : "s") + ". They are listed under Answers skipped." : ""), CW - 8), nh = 6 + nl.length * lh(8.5) + 3;
+  fill(tint([201, 138, 27], 0.82)); doc.roundedRect(M, y - 5, CW, nh, 3, 3, "F");
   F("fb", 8.5, [90, 62, 4]); tx("STUDENT-AUTHORED PLAN, STRUCTURED AND COSTED BY THE TOOL", M + 4, y);
-  F("fr", 8.5, [90, 62, 4]); var nl = split("The audit scores come from fixed rules applied to what the student observed. The target market, personas, objectives, strategy reasoning and evaluation plan were written by the student. The tool laid them out and calculated the Gantt chart and the budget." + (S.code ? " Submission code " + S.code + "." : ""), CW - 8); tx(nl.join("\n"), M + 4, y + 4); y += 20;
+  F("fr", 8.5, [90, 62, 4]); tx(nl.join("\n"), M + 4, y + 4); y += Math.max(20, nh + 2);
 
   head("Digital visibility score", "Weights: social media 30, Google profile 20, website 25, reviews 25. A part that does not apply is left out and the rest are re-weighted. Anything missing counts as zero.");
   var areas = [["Social media", A.social.score, 30], ["Google Business Profile", A.gbp.score, 20], ["Website", A.site.score, 25], ["Reviews and reputation", A.rep.score, 25]];
@@ -192,10 +195,10 @@ function build(S, IMG, fonts, logo, dims, opts) {
   else {
     table([{ w: 28, h: "Platform" }, { w: 24, h: "Rating" }, { w: 20, h: "Reviews", al: "r" }, { w: 28, h: "Newest review" }, { w: 22, h: "Owner replies" }, { w: 14, h: "Score", al: "r" }, { w: 38, h: "Main issue" }],
       A.rep.plats.map(function (p) {
-        if (p.excluded) return [{ t: p.name, b: true }, "Not required", "-", "-", "-", "-", "No customer location"];
+        if (p.excluded) return [{ t: p.name, b: true }, "Not counted", "-", "-", "-", "-", p.notes[0] || ""];
         if (p.missing) return [{ t: p.name, b: true }, "Not listed", "-", "-", "-", { t: "0", b: true, c: COL.bad }, "Counts as zero"];
         if (p.unanswered) return [{ t: p.name, b: true }, "Not answered", "-", "-", "-", "-", ""];
-        return [{ t: p.name, b: true }, p.rating + "/" + p.scale, f0(p.count || 0), p.days == null ? "-" : p.days + " days ago", (p.replies == null ? "-" : p.replies) + " of " + Math.min(5, p.n || 5), { t: String(p.score), b: true, c: COL[SA.cls(p.score)] }, (p.notes[0] || "").slice(0, 70)];
+        return [{ t: p.name, b: true }, p.rating == null ? "No rating yet" : p.rating + "/" + p.scale, f0(p.count || 0), p.days == null ? "-" : p.days + " days ago", (p.replies == null || !p.n ? "-" : p.replies + " of " + Math.min(5, p.n)), { t: String(p.score), b: true, c: COL[SA.cls(p.score)] }, (p.notes[0] || "").slice(0, 70)];
       }), { zebra: true });
     A.rep.flags.forEach(function (f) { para(f, { bullet: true, col: COL.bad, gap: 1.8 }); });
     A.rep.plats.forEach(function (p) { if (p.status === "listed" && p.tags) {
@@ -314,7 +317,8 @@ function build(S, IMG, fonts, logo, dims, opts) {
     });
     y += 1;
   });
-  F("fr", 7.5, MUT); y += 2; tx("Peak season for tourism is November to April, so ad spend is heavier in those months.", M, y); y += 6;
+  var usesPeak = Object.keys((S.plan && S.plan.cfg) || {}).some(function (k) { var c = S.plan.cfg[k]; return c && c.pat === "peak" && S.plan.strats.some(function (s) { return s.on && s.id === k; }); });
+  if (T.season && usesPeak) { F("fr", 7.5, MUT); y += 2; tx("Peak season for tourism is November to April.", M, y); y += 6; }
 
   /* budget */
   doc.addPage(); y = TOP;
@@ -342,8 +346,8 @@ function build(S, IMG, fonts, logo, dims, opts) {
   bullets([
     "Price list items use Islandeative's published prices for the task (MVR). Where 4 or more of one monthly item are bought, 15% is taken off, as on the price list.",
     "Ad spend and fees paid to creators are 'at cost' and go straight to the platform or person with no mark-up.",
-    T.season ? "Ad spend is weighted to the tourism peak season: 40% higher in November to April and 40% lower in May to October, so the year averages out." : "Ad spend is spread evenly across the months.",
-    "Items marked '2026 market estimate' (for example website build, hosting, SEO set-up, influencer fees, prizes and commission) are rough Maldives market figures for 2026, not quotes. Where the student entered a real quote, that figure is used. Quotes should be attached to the report as supporting documents.",
+    "Ad spend is the amount the student picked for each month the ads run.",
+    "Items marked '2026 market estimate' (for example website build, hosting, SEO set-up, influencer fees, prizes and commission) are rough Maldives market figures for 2026, not quotes. Quotes should be attached to the report as supporting documents.",
     "Contingency is " + B.cp + "% of the total and covers price changes and unplanned work."
   ], { size: 8.8 });
 
@@ -366,7 +370,7 @@ function build(S, IMG, fonts, logo, dims, opts) {
   if (!A.gbp.na) add(A.gbp.missing ? "Google Maps: a search showing the business has no Google profile" : "Google Business Profile: the full listing (hours, contact, photos, reviews)", "2. Situational analysis");
   if (A.site.none) add("Google: a search for the business name showing it has no website", "2. Situational analysis");
   else { add("Website: the homepage on desktop and on mobile", "2. Situational analysis"); if (SA.num(S.site.perf) != null || SA.num(S.site.seo) != null) add("PageSpeed Insights results for mobile", "2. Situational analysis"); add("Website: the pages behind any failed checks", "2. Situational analysis"); }
-  A.rep.plats.forEach(function (rp) { if (rp.status === "listed") add(rp.name + ": review page and 5 recent comments", "2. Situational analysis", true); else if (rp.missing) add(rp.name + ": a search showing the business is not listed", "2. Situational analysis"); });
+  A.rep.plats.forEach(function (rp) { if (rp.status === "listed") add(rp.name + ": review page and recent comments", "2. Situational analysis", !!IMG[rp.id]); else if (rp.missing) add(rp.name + ": a search showing the business is not listed", "2. Situational analysis"); });
   if (PO.comp) add("Your main competitor (" + PO.comp + "): its profile or website, used for the positioning map", "3. Target market (positioning)");
   TM.segs.forEach(function (g) { if (g.target === "yes" && g.fact) add("The source of your fact for " + g.name + ": \"" + g.fact + "\"", "3. Target market"); });
   var est = []; (S.plan.lines || []).forEach(function (l) { if (l.basis === "Market 2026" && est.indexOf(l.name.replace(/ \(.*$/, "")) < 0) est.push(l.name.replace(/ \(.*$/, "")); });
@@ -382,6 +386,10 @@ function build(S, IMG, fonts, logo, dims, opts) {
   head("What the student still writes", "The assignment is about 8,000 words. The tool structured and costed the plan. These sections need the student's own writing, with suggested lengths.");
   table([{ w: 56, h: "Section" }, { w: 106, h: "What to write" }, { w: 12, h: "Words", al: "r" }], SA.WRITE_GUIDE.map(function (r) { return [{ t: r[0], b: true }, r[2], r[1] ? String(r[1]) : "-"]; }), { size: 8, zebra: true });
   para("Use of AI: the report must state honestly how AI, including this tool, was used. Explanations, justification, theory and references must be the student's own work.", { size: 9, bold: true });
+  if (gaps.length) {
+    y += 4; head("Answers skipped", "The student chose to skip these answers in the tool. Fill the gaps in the report, or explain why the information was not available.");
+    table([{ w: 50, h: "Step" }, { w: 124, h: "What is missing" }], gaps.map(function (g) { return [{ t: g.step || "", b: true }, g.text]; }), { size: 8, zebra: true });
+  }
 
   /* appendices */
   doc.addPage(); y = TOP;
@@ -390,11 +398,23 @@ function build(S, IMG, fonts, logo, dims, opts) {
   A.rep.plats.forEach(function (p) {
     var a = (S.rep || {})[p.id] || {}; if (a.status !== "listed") return; anyEv = true;
     var sh = IMG[p.id], d = dims[p.id], iw = 90, ih = sh && d ? iw * d.h / d.w : 0; if (ih > 70) { ih = 70; iw = ih * d.w / d.h; }
-    room(Math.max(60, ih + 14)); h3(p.name + ": " + a.rating + "/" + p.scale + ", " + a.count + " reviews, newest " + a.lastDate);
-    var top = y;
-    if (sh && d) { try { doc.addImage(sh, "JPEG", M, y, iw, ih, undefined, "FAST"); stroke(LINE); doc.rect(M, y, iw, ih); } catch (e) { F("fr", 8, MUT); tx("Screenshot could not be placed.", M, y + 4); } }
-    var x2 = M + (sh && d ? iw + 6 : 0), w2 = CW - (sh && d ? iw + 6 : 0), yy = top;
-    SA.arr(a.comments).forEach(function (c, i) { if (!c || !(c.d || c.t)) return; F("fb", 7.5, MUT); var lnk = split(safe(c.d || "") + ": " + safe(c.t || ""), w2); F("fr", 8.3, INK); if (yy + lnk.length * lh(8.3) > BOT) return; tx(lnk.join("\n"), x2, yy + 3); yy += lnk.length * lh(8.3) + 1.8; });
+    var rt = SA.num(a.rating), ct = SA.num(a.count), hd = [];
+    hd.push(rt == null ? "no rating yet" : rt + "/" + p.scale); hd.push((ct == null ? "?" : f0(ct)) + " review" + (ct === 1 ? "" : "s")); if (a.lastDate) hd.push("newest " + a.lastDate);
+    room(Math.max(60, ih + 14)); h3(p.name + ": " + hd.join(", "));
+    var top = y, hasImg = !!(sh && d);
+    if (hasImg) { try { doc.addImage(sh, "JPEG", M, y, iw, ih, undefined, "FAST"); stroke(LINE); doc.rect(M, y, iw, ih); } catch (e) { hasImg = false; F("fr", 8, MUT); tx("Screenshot could not be placed.", M, y + 4); } }
+    else { F("fr", 8.3, MUT); tx("No screenshot was added in the tool.", M, y + 3); y += 6; top = y; }
+    var x2 = M + (hasImg ? iw + 6 : 0), w2 = CW - (hasImg ? iw + 6 : 0), yy = top, cms = SA.arr(a.comments).filter(function (c) { return c && (c.d || String(c.t || "").trim()); });
+    cms.forEach(function (c) {
+      F("fr", 8.3, INK); var lnk = split((c.d || "") + ": " + (c.t || ""), w2), h = lnk.length * lh(8.3);
+      if (yy + h > BOT) {
+        if (hasImg && yy < top + ih + 2) { yy = Math.max(yy, top + ih + 4); x2 = M; w2 = CW; lnk = split((c.d || "") + ": " + (c.t || ""), w2); h = lnk.length * lh(8.3); }
+        if (yy + h > BOT) { doc.addPage(); yy = TOP; top = TOP; ih = 0; x2 = M; w2 = CW; lnk = split((c.d || "") + ": " + (c.t || ""), w2); h = lnk.length * lh(8.3); }
+        F("fr", 8.3, INK);
+      }
+      tx(lnk.join("\n"), x2, yy + 3); yy += h + 1.8;
+    });
+    if (!cms.length) { F("fr", 8.3, MUT); tx("No recent comments were entered.", x2, yy + 3); yy += 6; }
     y = Math.max(top + ih, yy) + 6;
   });
   if (!anyEv) para("No review platforms were listed for this business.");

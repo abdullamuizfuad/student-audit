@@ -44,9 +44,9 @@ function tally(items) {
 }
 /* Students pick a band instead of counting days or posts. The bands carry the same weight as the old numbers. */
 var LAST_BANDS = [["d1", "Today or yesterday", 1], ["w1", "This week", 5], ["w2", "1 to 2 weeks ago", 11], ["w4", "3 to 4 weeks ago", 25], ["m3", "1 to 3 months ago", 60], ["m12", "3 to 12 months ago", 200], ["y1", "More than a year ago", 500], ["never", "Never posted", null]];
-var FREQ_BANDS = [["w1", "Within a week", 16], ["w2", "Within 2 weeks", 8], ["m1", "Within a month", 4], ["m3", "Within 3 months", 1.5], ["old", "Older than 3 months, or fewer than 3 posts in 2026", 0.3]];
+var FREQ_BANDS = [["w1", "Within a week", 16], ["w2", "Within 2 weeks", 8], ["m1", "Within a month", 4], ["m3", "Within 3 months", 1.5], ["old", "Older than 3 months, or fewer than 3 posts this year", 0.3]];
 function bandVal(list, id) { for (var i = 0; i < list.length; i++) if (list[i][0] === id) return list[i][2]; return undefined; }
-var CBANDS = [["c0", "Fewer than 5", 2], ["c1", "5 to 10", 7], ["c2", "11 to 20", 15], ["c3", "More than 20", 25]];
+var CBANDS = [["cn", "No comments", 0], ["c0", "Fewer than 5", 2], ["c1", "5 to 10", 7], ["c2", "11 to 20", 15], ["c3", "More than 20", 25]];
 function engCount(a) { var n = 0; [1, 2, 3].forEach(function (i) { var p = (a.eng || {})[i] || {}; if (num(p.l) != null && bandVal(CBANDS, p.c) !== undefined) n++; }); return n; }
 function engAvg(a) {
   if (a.likesHidden) return null;
@@ -223,7 +223,7 @@ function repPlatforms(type) {
   if (type === "food") return [{ id: "google", name: "Google", scale: 5 }, { id: "tripadvisor", name: "TripAdvisor", scale: 5, optional: true }];
   return [{ id: "google", name: "Google", scale: 5 }];
 }
-function volV(c) { return c >= 200 ? 1 : c >= 100 ? 0.8 : c >= 50 ? 0.6 : c >= 20 ? 0.4 : c >= 5 ? 0.2 : 0.05; }
+function volV(c) { return c >= 200 ? 1 : c >= 100 ? 0.8 : c >= 50 ? 0.6 : c >= 20 ? 0.4 : c >= 5 ? 0.2 : c > 0 ? 0.05 : 0; }
 function recV(d) { return d == null ? null : d < 0 ? null : d <= 30 ? 1 : d <= 90 ? 0.7 : d <= 180 ? 0.35 : d <= 365 ? 0.1 : 0; }
 function scoreRep(rep, type, now, gbpNa) {
   var list = repPlatforms(type), out = { plats: [], score: null, flags: [], na: false };
@@ -232,6 +232,8 @@ function scoreRep(rep, type, now, gbpNa) {
     var a = (rep && rep[pl.id]) || {}, r = { id: pl.id, name: pl.name, scale: pl.scale, status: a.status || "", score: 0, notes: [], issues: [] };
     if (a.status === "none" && gbpNa && pl.id === "google") {
       r.excluded = true; r.notes.push("No customer-facing location, so a Google listing is not required.");
+    } else if (a.status === "none" && pl.optional) {
+      r.excluded = true; r.optional = true; r.notes.push("Optional. Not counted.");
     } else if (a.status === "none") {
       r.missing = true; r.notes.push("Not listed on " + pl.name + ". Counts as zero.");
     } else if (a.status === "listed") {
@@ -249,6 +251,7 @@ function scoreRep(rep, type, now, gbpNa) {
         { w: 10, v: tg.n ? 1 - tg.neg / tg.n : null }
       ];
       var t = tally(items); r.score = t.score == null ? 0 : t.score;
+      if (count === 0) r.notes.push("Listed, but there are no reviews yet.");
       if (d != null && d < 0) r.issues.push("The latest review date is in the future.");
       cm.forEach(function (c, i) { var dd = daysBetween(c.d, now); if (dd != null && dd < 0) r.issues.push("Comment " + (i + 1) + " has a future date."); });
       if (cd.length && a.lastDate && Math.abs(daysBetween(cd[cd.length - 1], a.lastDate)) > 7) r.warn = "The newest of the 5 comments (" + cd[cd.length - 1] + ") does not match the latest review date you typed (" + a.lastDate + "). Check both.";
@@ -468,7 +471,7 @@ function makeStrategies(A, st, objs) {
   // affiliate
   line("affil", { name: "Partner or affiliate commission (paid only when a sale is made)", basis: "Estimate", unit: 1000, qty: 1, kind: "monthly", start: 4, end: 12, note: "Estimate of about 10% of attributed sales. Replace using the sales forecast." });
 
-  var on = { web: true, seo: true, content: true, smads: true, banner: hasSite || true, email: true,
+  var on = { web: true, seo: true, content: true, smads: true, banner: true, email: true,
     infl: !!(T.travel || b.type === "food") && tot < 15000, viral: lowEng, affil: b.type === "stay" && A.rep.plats.filter(function (p) { return p.status === "listed"; }).length >= 2 };
   var why = {
     web: A.site.none ? "The business has no website. A simple, fast site is the base for search, ads and AI answers." : "Website score " + A.site.score + "/100. " + ((A.site.notes && A.site.notes[0]) || ""),
@@ -491,8 +494,6 @@ function makeStrategies(A, st, objs) {
   });
   L.forEach(function (l, i) { l.id = "l" + (i + 1); });
   var plan = { strats: S, lines: L, cont: 10 };
-  var cap = num(b.cap) || 8000, order = ["viral", "affil", "infl", "banner", "email"];
-  for (var k = 0; k < order.length && budget(plan, b).sub > cap * 12; k++) { SBY_get(S, order[k]).on = false; }
   return plan;
 }
 
@@ -592,6 +593,7 @@ var SEGSETS = {
     { b: "beh", k: "decider", q: "Who decides", m: true, o: ["Owner or director", "HR manager", "Finance manager", "Operations manager", "Procurement team"] },
     { b: "beh", k: "loyal", q: "Relationship", m: false, o: ["New clients", "Occasional clients", "Long-term clients"] }] }
 };
+function hasLoc(b) { b = b || {}; return b.onLocation === "yes" || b.onLocation === "both"; }
 function segCtx(type) { var t = TBY[type]; return t ? (t.group === "travel" ? "travel" : t.group) : "service"; }
 function segWho(type) { var s = SEGSETS[segCtx(type)]; return { b: "all", k: "who", q: "Who are they?", m: false, o: s.who }; }
 function isB2B(type, g) { var s = SEGSETS[segCtx(type)], w = g && g.s ? g.s.who : ""; return s.biz.indexOf(w) >= 0; }
@@ -758,7 +760,7 @@ function pMonths(pat, st, lab, season) {
   if (!out.length) out.push(st);
   return out;
 }
-function spaced(n, st) { var out = [], gap = Math.max(1, Math.round((13 - st) / n)); for (var k = 0; k < n; k++) { var m = st + k * gap; if (m <= 12) out.push(m); } return out.length ? out : [st]; }
+function spaced(n, st) { var avail = 13 - st, out = []; if (n >= avail) return rng(st, 12); var gap = Math.floor(avail / n); for (var k = 0; k < n; k++) out.push(st + k * gap); return out; }
 var MOMENTS = [["ramadan", "Ramadan and Eid", [2, 3]], ["school", "School holidays", [6, 12]], ["peak", "Start of peak season", [11]], ["year", "New Year", [1]], ["eidh", "Eid al-Adha", [5]]];
 function momentMonths(keys, lab) { var out = []; MOMENTS.forEach(function (x) { if ((keys || {})[x[1]]) lab.forEach(function (m) { if (x[2].indexOf(m.cal) >= 0 && out.indexOf(m.i) < 0) out.push(m.i); }); }); return out.sort(function (a, b) { return a - b; }); }
 function ML(name, basis, unit, qty, months, o) { o = o || {}; if (!months.length) return null; return { name: name, basis: basis, unit: unit, qty: qty, kind: "months", months: months.slice(), start: months[0], end: months[months.length - 1], disc: !!o.disc, season: !!o.season, f: o.f || "" }; }
@@ -833,7 +835,7 @@ var SCFG = {
     ],
     build: function (v, c) {
       var ms = pMonths(v.pat || "always", c.st, c.lab), pl = Object.keys(v.plat || {}).filter(function (k) { return v.plat[k]; }), L = [], amt = +v.amt || 0;
-      pl.forEach(function (p) { L.push(ML("Ad spend on " + (p === "meta" ? "Facebook and Instagram" : "TikTok"), "At cost", Math.round(amt / pl.length), 1, ms, { season: v.pat === "always" })); });
+      pl.forEach(function (p) { L.push(ML("Ad spend on " + (p === "meta" ? "Facebook and Instagram" : "TikTok"), "At cost", Math.round(amt / pl.length), 1, ms)); });
       if (v.creative === "new") { var firsts = ms.filter(function (m, i) { return i === 0 || ms[i - 1] !== m - 1; }); L.push(ML("New ad videos (2 for each run)", "Price list", 1000, 2, firsts)); }
       if (v.who === "agency") L.push(ML("Ad management", "Market 2026", 1500, 1, ms));
       return L;
@@ -849,7 +851,7 @@ var SCFG = {
     ],
     build: function (v, c) {
       var ms = pMonths(v.pat || "always", c.st, c.lab), ty = Object.keys(v.type || {}).filter(function (k) { return v.type[k]; }), L = [], amt = +v.amt || 0;
-      ty.forEach(function (t) { L.push(ML("Google " + (t === "search" ? "search" : "display") + " ad spend", "At cost", Math.round(amt / ty.length), 1, ms, { season: v.pat === "always" })); });
+      ty.forEach(function (t) { L.push(ML("Google " + (t === "search" ? "search" : "display") + " ad spend", "At cost", Math.round(amt / ty.length), 1, ms)); });
       if (v.who === "agency") L.push(ML("Google Ads management", "Price list", 1500, 1, ms));
       return L;
     }
@@ -881,7 +883,7 @@ var SCFG = {
     ],
     build: function (v, c) {
       var ms = spaced(+v.n || 1, c.st), fee = { nano: 1000, micro: 3000, mid: 8000 }[v.size || "micro"], L = [];
-      L.push(ML("Influencer fee (" + (v.size || "micro") + " creator)", "Market 2026", fee, 1, ms));
+      L.push(ML("Influencer fee (" + (v.size || "micro") + " creator, " + ms.length + " campaign" + (ms.length > 1 ? "s" : "") + ")", "Market 2026", fee, 1, ms));
       L.push(ML("Influencer campaign management", "Price list", 2000, 1, ms));
       if (v.pr === "yes") L.push(ML("Press release to media", "Price list", 600, 1, ms));
       return L;
@@ -897,7 +899,7 @@ var SCFG = {
     ],
     build: function (v, c) {
       var ms = spaced(+v.n || 1, c.st), L = [];
-      L.push(ML("Prizes", "Market 2026", +v.prize || 1500, 1, ms));
+      L.push(ML("Prizes (" + ms.length + " campaign" + (ms.length > 1 ? "s" : "") + ")", "Market 2026", +v.prize || 1500, 1, ms));
       L.push(ML("Launch Reel", "Price list", 1000, 1, ms));
       if (+v.boost) L.push(ML("Launch ad boost", "At cost", +v.boost, 1, ms));
       L.push(ML("Repost entries and reply", "Own time", 0, 1, rng(c.st, 12)));
@@ -966,7 +968,7 @@ var WRITE_GUIDE = [
   ["Control and evaluation", 400, "Explain how and when you will check, and what you will do if a target is missed."],
   ["Conclusion, AI use statement, references", 300, "Keep the AI use statement honest and list every source you cite."]
 ];
-G.SA = { MOCKUPS: MOCKUPS, SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
+G.SA = { hasLoc: hasLoc, spaced: spaced, MOCKUPS: MOCKUPS, SCFG: SCFG, scQs: scQs, scLines: scLines, stratCtx: stratCtx, scChoices: scChoices, OBJ_TYPES: OBJ_TYPES, KPIS: KPIS, STRAT_DESC: STRAT_DESC, FITS: FITS, FREQ: FREQ, ACTS_BY: ACTS_BY, actsFor: actsFor, lineActive: lineActive, segReason: segReason, POS: POS, POS_DIFF: POS_DIFF, POS_PROOF: POS_PROOF, posSet: posSet, posAx: posAx, posFields: posFields, posText: posText, posXY: posXY, SEGSETS: SEGSETS, segQs: segQs, segWho: segWho, isB2B: isB2B, plists: plists, chosen: chosen, ATT: ATT, BASIS: BASIS, PGOAL: PGOAL, PPAIN: PPAIN, PTRIG: PTRIG, ACTS: ACTS, picks: picks, andJoin: andJoin, segText: segText, segScore: segScore, WRITE_GUIDE: WRITE_GUIDE, PLATS: PLATS, PBY: PBY, TYPES: TYPES, TBY: TBY, GBP_CHECKS: GBP_CHECKS, SITE_GROUPS: SITE_GROUPS, SITE_CHECKS: SITE_CHECKS, STRATS: STRATS, SBY: SBY, THEMES: THEMES,
   repPlatforms: repPlatforms, LAST_BANDS: LAST_BANDS, CBANDS: CBANDS, engAvg: engAvg, engCount: engCount, FREQ_BANDS: FREQ_BANDS, audit: audit, makeObjectives: makeObjectives, makeStrategies: makeStrategies, budget: budget, evalRows: evalRows, milestones: milestones,
   monthLabels: monthLabels, arr: arr, isPeak: isPeak, cls: cls, num: num, mvr: mvr, ymd: ymd, daysBetween: daysBetween, clamp: clamp, lineCost: lineCost };
 })(typeof window !== "undefined" ? window : globalThis);
