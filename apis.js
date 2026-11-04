@@ -6,7 +6,7 @@
    - The QR code on the PDF is drawn by vendor/qrcode.js in the browser, with no web service. */
 (function () {
   "use strict";
-  var PSI_KEY = ""; // Google Cloud API key restricted to https://abdullamuizfuad.github.io/* and the PageSpeed Insights API only
+  var PSI_KEY = "AIzaSyAD25_f0GdvRVya23JCyybVXBjdMrkRfek"; // Google Cloud API key restricted to https://abdullamuizfuad.github.io/* and the PageSpeed Insights API only
   function timeout(ms, p) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error("timeout")); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function getJson(u, ms) { return timeout(ms, fetch(u, { mode: "cors", credentials: "omit" })).then(function (r) { if (!r.ok) { var e = new Error("http " + r.status); e.status = r.status; throw e; } return r.json(); }); }
   function norm(u) { u = String(u || "").trim(); if (!u) return ""; if (!/^https?:\/\//i.test(u)) u = "https://" + u; try { return new URL(u).href; } catch (e) { return ""; } }
