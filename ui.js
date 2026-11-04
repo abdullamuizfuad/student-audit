@@ -1024,7 +1024,7 @@ function openSaved(file) {
     if (!d || !d.state || !d.state.biz) { toast("This file could not be read."); return; }
     if (String(d.sid || "").toUpperCase() !== String(ME.sid || "").toUpperCase()) { toast("This report was saved under another student ID, so it cannot be opened here."); return; }
     if (!confirm("Open this saved report? It replaces the answers in the tool now.")) return;
-    S = stamp(d.state); SA.migrate(S); IMG = d.img || {}; saveImgs(); delete S.tsub; NOTICE = "Saved report opened. You are back on step " + (S.step + 1) + ": " + STEPS[S.step] + "."; render(); toast("Saved report opened.");
+    var sn2 = S.seen2; S = stamp(d.state); SA.migrate(S); S.seen2 = S.seen2 || sn2; IMG = d.img || {}; saveImgs(); delete S.tsub; NOTICE = "Saved report opened. You are back on step " + (S.step + 1) + ": " + STEPS[S.step] + "."; render(); toast("Saved report opened.");
   };
   fr.readAsArrayBuffer(file);
 }
@@ -1050,7 +1050,7 @@ function resetAsk() {
   setTimeout(function () { $("saResetSave").focus(); }, 30);
 }
 function resetAll() {
-  S = stamp(blank()); S.maxStep = 0; IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {}
+  var sn = S.seen2; S = stamp(blank()); S.maxStep = 0; S.seen2 = sn; IMG = {}; saveImgs(); try { localStorage.removeItem(DRAFT); } catch (e) {}
   NOTICE = "Everything was cleared. You are starting a fresh audit."; render();
   if (CLOUD) { clearTimeout(CT); SAC.saveState(ME.sid, S, ME.name).then(function () { cloudMsg("Saved to your account"); }, function (e) { cloudMsg("Not saved yet: " + SAC.say(e) + " Your answers are kept on this device.", true); }); }
   toast("Everything was cleared. You are on step 1.");
@@ -1090,25 +1090,46 @@ $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
 window.SA_SET = function (st, img) { S = st; SA.migrate(S); if (img !== undefined) IMG = img || {}; render(); };
 if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
-/* What's new: shown once to students whose saved work was moved to the new plan layout */
-function showNews() {
-  var m = document.createElement("div"); m.className = "sa-modal"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "saNewsH");
-  m.innerHTML = '<div class="sa-modal-box"><h2 id="saNewsH">What is new in the tool</h2><ul>' +
-    "<li><b>SMART objectives, part by part.</b> You choose the channel, the segment, the numbers and what will drive it. The tool writes the sentence, and you can edit it. It also checks if your target is realistic for 12 months.</li>" +
-    "<li><b>Social media marketing (content and paid ads) is now required,</b> and every plan needs at least 3 strategies.</li>" +
-    "<li><b>Content marketing is split</b> into Social media, Blog articles, Email newsletter and Video.</li>" +
-    "<li><b>The marketing funnel.</b> Your strategies are placed at Awareness, Consideration, Conversion and Loyalty. A direct route (DMs, WhatsApp, Viber, SMS or email) is recommended for the Conversion stage.</li></ul>" +
-    "<p><b>We moved your answers to the new layout.</b> Please check your objectives and strategies, and fill in the new boxes. Anything still missing is listed when you press Next.</p>" +
-    '<div class="sa-actions"><button type="button" class="btn btn-primary" id="saNewsGo">Check my objectives</button><button type="button" class="btn btn-ghost" id="saNewsLater">Later</button></div></div>';
+/* Digital Presence Audit 2.0: a short tour shown once to every student (remembered in their account as S.seen2) */
+var V2 = [
+  ["Digital Presence Audit 2.0", "<p>The tool has been updated. The next few pages show what is new and what has changed.</p><h3>Your work is safe</h3><p>Your answers were kept and moved to the new layout. Check your objectives and strategies, and fill in any new boxes. Anything missing is listed when you press Next.</p>"],
+  ["Getting around", "<ul><li><b>Go to step:</b> a list at the top of every page takes you to any step you have already reached. No more pressing Back many times.</li><li><b>Back to my objectives:</b> a button on steps 9, 10 and 11 takes you straight back to your objectives.</li></ul>"],
+  ["Website tests (step 4)", "<ul><li>Type the website address, then press <b>Run the website tests</b>.</li><li>The tool runs Google PageSpeed Insights on mobile and fills in the Performance and SEO scores.</li><li>It also reads the home page title and description, and takes a screenshot that goes into your PDF as evidence.</li><li>You still answer every check yourself. If the test service is busy, use the links and type the scores in.</li></ul>"],
+  ["SMART objectives", "<ul><li>Build each objective part by part: kind, action, KPI, channel, segment, numbers, what will drive it, the audit gap and the deadline.</li><li>The tool writes the sentence, and you can edit it.</li><li>A realistic check tells you if your target is realistic, ambitious or very ambitious for 12 months.</li><li>Green and red S, M, A, R, T tiles show which parts are still missing.</li><li><b>Loyalty</b> is an optional fourth kind of objective: getting existing customers to come back, buy again and recommend the business.</li></ul>"],
+  ["The marketing funnel", "<ul><li>A funnel picture shows your objectives and strategies at each stage: Awareness, Consideration, Conversion and Loyalty.</li><li>An empty stage is marked, with a quick button to add a strategy that fits.</li><li>Aim for one objective each at Awareness, Engagement and Sales.</li></ul>"],
+  ["Strategies", "<ul><li>Social media marketing (content and paid ads) is now required, and every plan needs at least 3 strategies.</li><li>Content is split into Social media, Blog articles, Email newsletter and Video.</li><li>New: <b>Direct route to customers</b> (DMs, WhatsApp, Viber, SMS, email) for turning interest into bookings and sales.</li></ul>"],
+  ["Saving your work and opening it later", "<ul><li>Your work saves to your account as you go, so you can continue on any device.</li><li><b>Save progress</b> (top of the page) also downloads a PDF copy of your work.</li><li>To get it back, press <b>Open saved</b> and choose that PDF. Every answer, screenshot and step comes back, and you continue exactly where you left off. Your final report PDF opens the same way.</li><li>Use the PDF exactly as downloaded. Re-saving it through Print to PDF, Word or another app removes the saved answers.</li><li>Only your own student ID can open your saved PDF.</li></ul>"],
+  ["Clear all and start over", "<ul><li>The red button at the bottom of each page wipes everything and gives you a fresh start, for example if you want to audit a different business.</li><li>It asks first, and lets you save a copy before anything is deleted.</li></ul>"],
+  ["QR code on your final PDF", "<ul><li>Page 1 of your final report has a QR code. Your lecturer scans it to check your submission code is genuine.</li><li>Attach the PDF to your assignment as downloaded, without editing it.</li></ul>"]
+];
+function showV2() {
+  var old = $("saV2"); if (old) old.remove();
+  var k = 0, m = document.createElement("div"); m.className = "sa-modal"; m.id = "saV2"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "saV2H");
   document.body.appendChild(m);
-  var close = function () { m.remove(); S.newsPending = false; save(); };
-  $("saNewsLater").addEventListener("click", close);
-  $("saNewsGo").addEventListener("click", function () { close(); if (S.step >= 7) { S.step = 7; setSub(7, 0); render(); } });
-  setTimeout(function () { $("saNewsGo").focus(); }, 30);
+  var done = function (toObj) { m.remove(); document.removeEventListener("keydown", keys); S.seen2 = true; S.newsPending = false; save(); if (toObj && S.step >= 7) { S.step = 7; setSub(7, 0); render(); } };
+  var keys = function (ev) { if (ev.key === "Escape") done(false); else if (ev.key === "ArrowRight" && k < V2.length - 1) { k++; draw(); } else if (ev.key === "ArrowLeft" && k > 0) { k--; draw(); } };
+  function draw() {
+    var last = k === V2.length - 1;
+    m.innerHTML = '<div class="sa-modal-box sa-v2"><button type="button" class="sa-v2-skip" id="saV2Skip">Skip</button>' +
+      (k ? '<p class="sa-v2-kick">Version 2.0 \u00b7 ' + (k + 1) + " of " + V2.length + "</p>" : '<p class="sa-v2-kick">What is new</p>') +
+      '<h2 id="saV2H">' + V2[k][0] + '</h2><div class="sa-v2-body">' + V2[k][1] + '</div>' +
+      '<div class="sa-v2-dots" aria-hidden="true">' + V2.map(function (x, i) { return '<i class="' + (i === k ? "on" : "") + '"></i>'; }).join("") + "</div>" +
+      '<div class="sa-actions sa-v2-nav">' + (k ? '<button type="button" class="btn btn-ghost" id="saV2Back">Back</button>' : "<span></span>") +
+      (last ? '<span class="sa-v2-end">' + (S.step >= 7 ? '<button type="button" class="btn btn-ghost" id="saV2Obj">Check my objectives</button>' : "") + '<button type="button" class="btn btn-primary" id="saV2Go">Got it</button></span>'
+        : '<button type="button" class="btn btn-primary" id="saV2Next">Next</button>') + "</div></div>";
+    $("saV2Skip").addEventListener("click", function () { done(false); });
+    if ($("saV2Back")) $("saV2Back").addEventListener("click", function () { k--; draw(); });
+    if ($("saV2Next")) $("saV2Next").addEventListener("click", function () { k++; draw(); });
+    if ($("saV2Go")) $("saV2Go").addEventListener("click", function () { done(false); });
+    if ($("saV2Obj")) $("saV2Obj").addEventListener("click", function () { done(true); });
+    var f = $("saV2Next") || $("saV2Go"); if (f) setTimeout(function () { f.focus(); }, 20);
+  }
+  document.addEventListener("keydown", keys);
+  draw();
 }
 function start(note) {
   if (note) NOTICE = note; else if (RESUMED) NOTICE = "Welcome back. You are on step " + (S.step + 1) + ": " + STEPS[S.step] + ".";
-  LOADED = true; render(); if (S.newsPending && S.step > 0) showNews();
+  LOADED = true; render(); if (!S.seen2) showV2();
   idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
 }
 if (!CLOUD) start();

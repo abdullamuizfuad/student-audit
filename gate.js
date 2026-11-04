@@ -50,12 +50,20 @@
       return SAC.profile(sid).then(function (p) { enter(sid, (p && p.name) || ""); }, function () { enter(sid, ""); });
     }, fail);
   });
+  /* Digital Presence Audit 2.0: everyone is signed out once (see tool.html), then signs in again */
+  var FORCE = false; try { if (localStorage.getItem("ia-v2-out") !== "1") { localStorage.setItem("ia-v2-out", "1"); localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); FORCE = true; } } catch (e) {}
+  var OUT = FORCE || /[?&]out=1/.test(location.search);
+  if (FORCE || /[?&]v2=1/.test(location.search)) {
+    var note = document.createElement("div"); note.className = "sa-note sa-v2note"; note.setAttribute("role", "status");
+    note.innerHTML = "<b>Digital Presence Audit 2.0 is here.</b> We signed everyone out for the update. Sign in again with your student ID and PIN. Your work is saved in your account and will open where you left off.";
+    $("gate").parentNode.insertBefore(note, $("gate"));
+  }
   /* Already signed in on this device: go straight on, unless they came here to sign out. */
-  if (window.SAC && SAC.ok && !/[?&]out=1/.test(location.search)) SAC.ready().then(function (u) {
+  if (window.SAC && SAC.ok && !OUT) SAC.ready().then(function (u) {
     var sid = SAC.sidOf(u); if (!sid) return;
     SAC.profile(sid).then(function (p) { if (p) enter(sid, p.name || ""); }, function () {});
   });
-  if (/[?&]out=1/.test(location.search) && window.SAC) SAC.signOut();
+  if (OUT && window.SAC && SAC.ok) SAC.signOut();
   setMode(false);
   $("saTheme").addEventListener("click", function () {
     var d = document.documentElement, dark = d.dataset.theme !== "dark";
