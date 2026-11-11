@@ -12,6 +12,8 @@ function blank() {
 }
 var ME = (function () { try { return JSON.parse(localStorage.getItem("ia-student") || sessionStorage.getItem("ia-student") || "null") || {}; } catch (e) { return {}; } })();
 DRAFT = DRAFT_OLD + ":" + (ME.sid || "anon");
+var DEMO = /[?&]demo=1/.test(location.search) && !!window.SA_DEMO;
+if (DEMO) ME = { name: "Guest reviewer", sid: "DEMO", email: "Preview mode" };
 function stamp(st) { st.biz.student = ME.name || st.biz.student || ""; st.biz.sid = ME.sid || st.biz.sid || ""; st.biz.email = ME.email || ""; return st; }
 var S = stamp(blank()), IMG = {}, RESUMED = false; // IMG holds screenshots; also kept in this browser (IndexedDB) so they survive a reload
 /* small IndexedDB store for screenshots */
@@ -19,7 +21,7 @@ function idb() { return new Promise(function (res, rej) { if (!window.indexedDB)
 function idbSet(k, v) { return idb().then(function (db) { return new Promise(function (res) { var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); }).catch(function () {}); }
 function idbGet(k) { return idb().then(function (db) { return new Promise(function (res) { var q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(null); }; }); }).catch(function () { return null; }); }
 function imgKey() { return "img-" + (ME.sid || "anon"); }
-var CLOUD = !!(window.SAC && SAC.ok && ME.cloud && ME.sid), CT = null, SENT = {};
+var CLOUD = !DEMO && !!(window.SAC && SAC.ok && ME.cloud && ME.sid), CT = null, SENT = {};
 function cloudMsg(t, bad) { var el = $("saCloud"); if (el) { el.textContent = t; el.classList.toggle("bad", !!bad); } }
 function cloudSave() {
   if (!CLOUD) return; clearTimeout(CT); cloudMsg("Saving...");
@@ -32,10 +34,10 @@ function cloudImgs() {
   Object.keys(IMG).forEach(function (k) { if (SENT[k] !== IMG[k].length) { SENT[k] = IMG[k].length; SAC.saveImg(ME.sid, k, IMG[k]).catch(function () { delete SENT[k]; }); } });
   Object.keys(SENT).forEach(function (k) { if (!IMG[k]) { delete SENT[k]; SAC.saveImg(ME.sid, k, null).catch(function () {}); } });
 }
-function saveImgs() { idbSet(imgKey(), IMG); cloudImgs(); }
+function saveImgs() { if (DEMO) return; idbSet(imgKey(), IMG); cloudImgs(); }
 
 var LOADED = false;
-function save() { if (!LOADED) return; S.savedAt = Date.now(); try { localStorage.setItem(DRAFT, JSON.stringify(S)); } catch (e) {} cloudSave(); }
+function save() { if (!LOADED || DEMO) return; S.savedAt = Date.now(); try { localStorage.setItem(DRAFT, JSON.stringify(S)); } catch (e) {} cloudSave(); }
 function load() { try { var r = localStorage.getItem(DRAFT);
   if (!r) { var old = localStorage.getItem(DRAFT_OLD), oo = old ? JSON.parse(old) : null; if (oo && oo.biz && oo.biz.sid && oo.biz.sid === ME.sid) { r = old; localStorage.setItem(DRAFT, old); localStorage.removeItem(DRAFT_OLD); } } if (r) { var o = JSON.parse(r); if (o && o.biz) { S = o; SA.migrate(S); return true; } } } catch (e) {} return false; }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -1089,7 +1091,7 @@ $("saTheme").addEventListener("click", function () {
 $("saYr").textContent = new Date().getFullYear();
 window.SA_STATE = function () { return S; };
 window.SA_SET = function (st, img) { S = st; SA.migrate(S); if (img !== undefined) IMG = img || {}; render(); };
-if (load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
+if (!DEMO && load()) { if (S.biz.sid && ME.sid && S.biz.sid !== ME.sid) { S = blank(); } stamp(S); RESUMED = S.step > 0; delete S.tsub; if (S.objs && !Array.isArray(S.objs)) S.objs = null; if (S.step === 4 && S.biz.type && (SA.TBY[S.biz.type] || {}).travel) { /* screenshots are not saved: asked again at validation */ } }
 /* Digital Presence Audit 2.0: a short tour shown once to every student (remembered in their account as S.seen2) */
 var V2 = [
   ["Digital Presence Audit 2.0", "<p>The tool has been updated. The next few pages show what is new and what has changed.</p><h3>Your work is safe</h3><p>Your answers were kept and moved to the new layout. Check your objectives and strategies, and fill in any new boxes. Anything missing is listed when you press Next.</p>"],
@@ -1132,7 +1134,8 @@ function start(note) {
   LOADED = true; render(); if (!S.seen2) showV2();
   idbGet(imgKey()).then(function (m) { if (m && typeof m === "object" && !Object.keys(IMG).length) { IMG = m; if (S.step === 4 || S.step === 10) render(true); } });
 }
-if (!CLOUD) start();
+if (DEMO) window.SA_DEMO.start({ get S() { return S; }, set S(v) { S = v; }, stamp: stamp, render: render, pagesFor: pagesFor, setSub: setSub, VALID: VALID, STEPS: STEPS, gaps: gaps, deriveLines: deriveLines, sha: sha, setLoaded: function () { LOADED = true; }, setImg: function (m) { IMG = m; }, getImg: function () { return IMG; } });
+else if (!CLOUD) start();
 else {
   $("saStep").innerHTML = '<p class="sa-lede">Loading your work...</p>';
   SAC.ready().then(function (u) {

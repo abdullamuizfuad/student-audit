@@ -35,3 +35,9 @@ Settings, Pages, Source: Deploy from a branch, Branch: main, folder: / (root).
 - `assets/` Islandeative stylesheet and logo, `pdf/` PDF fonts (Archivo and Figtree, OFL)
 
 © 2026 Islandeative. All rights reserved. The tool, its scoring rules and benchmarks are owned by Islandeative.
+
+## Guest demo (for visitors and review panels)
+- `tool.html?demo=1` (linked from the sign-in page: "Not a student? Watch the guest demo") plays a finished audit of **Ruka Maldives**, a real guesthouse on Dhiffushi, with a **fictional scenario**. Each page fills itself in and moves on after 4 seconds (or on Next); the last page shows the PDF report as a preview. "Download PDF" only shows a notice: downloads are for enrolled students.
+- Nothing is saved: no sign-in, no Firebase, no local draft. Review screenshots are drawn placeholders marked "demo".
+- Files: `demo.js` (the player), `demo-ruka.js` (the scenario: every answer and figure is invented), `vendor/pdfjs/` (pdf.js 3.11.174, Apache-2.0, draws the preview).
+- To change the scenario, edit `demo-ruka.js`. Keep every review comment marked "(demo comment)" and keep the disclaimer in `demo.js`.

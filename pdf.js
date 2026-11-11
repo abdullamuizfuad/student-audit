@@ -21,6 +21,7 @@ function safe0(s) { return String(s == null ? "" : s).replace(/[–—]/g, "-").
 /* Saves the PDF with the student's answers tucked in after the end of the file, so the tool can reload it later. */
 function saveWithData(doc, nm, embed) {
   var buf = new Uint8Array(doc.output("arraybuffer")), extra = new Uint8Array(0);
+  if (window.SA_DEMO_PDF) { window.SA_DEMO_PDF(buf); return buf; }
   if (embed) extra = new TextEncoder().encode("\n%IASA-DATA:" + embed + "\n%IASA-END\n");
   var all = new Uint8Array(buf.length + extra.length); all.set(buf); all.set(extra, buf.length);
   var url = URL.createObjectURL(new Blob([all], { type: "application/pdf" })), a = document.createElement("a");
